@@ -1,0 +1,127 @@
+# Citation metadata for the local research artifact.
+# No public repository URL, personal author identity, DOI, release date, or
+# software version was supplied. These fields are deliberately omitted.
+cff-version: 1.2.0
+message: >-
+  If you use cagra-chunksplice, its experimental design, diagram, or recorded
+  results in scholarly work, please cite this software and the relevant upstream
+  works in references. Identify the exact source digest or archived revision.
+  Publication citation is a scholarly expectation, not an additional MIT
+  license condition.
+type: software
+title: "cagra-chunksplice: Controlled Experiments on Intra-Chunk Connectivity in Incremental Proximity Graphs"
+authors:
+  - family-names: "Çalışır"
+    given-names: "Cihan"
+    email: "calisircihan21@gmail.com"
+license: MIT
+abstract: >-
+  A single-file PyTorch mechanism experiment comparing exact graph rebuilding,
+  snapshot insertion with degree-capped reverse edges, intra-chunk nearest-neighbor
+  splicing, and optional bounded local relative-neighborhood refinement.
+  Recorded artifacts comprise a controlled insertion-partition sweep and a
+  four-update stream using synthetic drift microclusters on an NVIDIA GeForce
+  RTX 4070 SUPER. This is not an implementation or benchmark of NVIDIA
+  cuVS/CAGRA, the complete MIRAGE-ANNS index, or HNSW.
+keywords:
+  - approximate nearest neighbor search
+  - proximity graphs
+  - incremental indexing
+  - GPU
+  - PyTorch
+  - chunk splicing
+  - reproducibility
+identifiers:
+  - type: other
+    value: "sha256:84ebd6bb20d003f07d70b07d22d3bb63edd6bffee9b2fb2b4acd94ea811b2b0b"
+    description: >-
+      SHA-256 of cagra_mirage_prototype.py recorded in sweep_results.json and
+      stream_results.json; not a Git commit or release identifier.
+references:
+  - type: conference-paper
+    title: "CAGRA: Highly Parallel Graph Construction and Approximate Nearest Neighbor Search for GPUs"
+    authors:
+      - family-names: Ootomo
+        given-names: Hiroyuki
+      - family-names: Naruse
+        given-names: Akira
+      - family-names: Nolet
+        given-names: Corey
+      - family-names: Wang
+        given-names: Ray
+      - family-names: Feher
+        given-names: Tamas
+      - family-names: Wang
+        given-names: Yong
+    year: 2024
+    collection-title: "2024 IEEE 40th International Conference on Data Engineering (ICDE)"
+    start: 4236
+    end: 4247
+    doi: "10.1109/ICDE60146.2024.00323"
+    url: "https://arxiv.org/abs/2308.15136"
+    notes: >-
+      GPU graph-indexing prior work. Bibliographic metadata follow NVIDIA cuVS
+      official references. The local PyTorch experiment does not call cuVS.
+  - type: software
+    title: "cuVS: GPU-accelerated vector search and clustering"
+    authors:
+      - name: "NVIDIA and cuVS contributors"
+    repository-code: "https://github.com/NVIDIA/cuvs"
+    url: "https://docs.nvidia.com/cuvs/api-reference/c-api-neighbors-cagra"
+    notes: >-
+      Upstream library and CAGRA extension API; not a measured implementation
+      in the supplied experiment.
+  - type: article
+    title: "MIRAGE-ANNS: Mixed Approach Graph-based Indexing for Approximate Nearest Neighbor Search"
+    authors:
+      - family-names: Voruganti
+        given-names: Sairaj
+      - family-names: Özsu
+        given-names: M. Tamer
+    year: 2025
+    journal: "Proceedings of the ACM on Management of Data"
+    volume: 3
+    issue: 3
+    number: 188
+    doi: "10.1145/3725325"
+    url: "https://doi.org/10.1145/3725325"
+    notes: >-
+      SIGMOD 2025 research track, article 188, 27 pages. This is the MIRAGE
+      nearest-neighbor work relevant to the prototype; attribution to ACM
+      SIGCOMM or ACM Transactions on Computer Systems (TOCS) would be incorrect.
+  - type: software
+    title: "MIRAGE upstream implementation"
+    authors:
+      - name: "MIRAGE authors and contributors"
+    repository-code: "https://github.com/dsg-uwaterloo/mirage"
+    notes: >-
+      Algorithmic reference for the optional MIRAGE-inspired local refinement
+      path; the local prototype does not implement the complete hierarchy.
+  - type: thesis
+    title: "MIRAGE-ANNS: Mixed Approach Graph-based Indexing for Approximate Nearest Neighbour Search"
+    authors:
+      - family-names: Voruganti
+        given-names: Sairaj
+    year: 2025
+    institution:
+      name: "University of Waterloo"
+    url: "https://hdl.handle.net/10012/21582"
+    notes: "Separate thesis artifact, dated 2025-04-14 in the institutional record."
+  - type: article
+    title: "Efficient and Robust Approximate Nearest Neighbor Search Using Hierarchical Navigable Small World Graphs"
+    authors:
+      - family-names: Malkov
+        given-names: Yury A.
+      - family-names: Yashunin
+        given-names: Dmitry A.
+    year: 2020
+    journal: "IEEE Transactions on Pattern Analysis and Machine Intelligence"
+    volume: 42
+    issue: 4
+    start: 824
+    end: 836
+    doi: "10.1109/TPAMI.2018.2889473"
+    url: "https://arxiv.org/abs/1603.09320"
+    notes: >-
+      HNSW foundational prior work. Published online in 2018; journal issue
+      dated 2020; arXiv first submitted in 2016. No HNSW baseline is measured.

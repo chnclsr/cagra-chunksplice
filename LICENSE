@@ -1,0 +1,91 @@
+MIT License
+
+Copyright (c) 2026 Cihan Çalışır <calisircihan21@gmail.com> and cagra-chunksplice contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+INTELLECTUAL PROPERTY AND SCHOLARLY ATTRIBUTION NOTICE
+Explanatory notice; not additional conditions on the MIT permission grant.
+
+1. Scope and ownership
+
+The MIT grant above applies to original contributions to cagra-chunksplice to
+the extent the respective contributors hold the applicable rights. Copyright
+remains with the respective rights holders. The collective attribution does
+not assign ownership of third-party work to this project.
+
+NVIDIA cuVS/CAGRA, MIRAGE-ANNS, and HNSW are prior works credited to their
+respective authors and contributors. This project does not claim to have
+invented those algorithms, to own their protected materials, or to be an
+official implementation or an endorsed product.
+
+Third-party code, documentation, publications, data, and other material are
+not relicensed by this notice. Any such material incorporated or redistributed
+must be handled under its own applicable license and attribution notices.
+No permission to use third-party trademarks or to imply endorsement is
+conferred by this project.
+
+2. Required notices for copies
+
+Copies or substantial portions of the Software must retain the copyright
+notice and permission notice above, as required by the MIT License. Preserve
+applicable third-party notices when redistributing third-party material.
+These notice-retention obligations are distinct from academic citation.
+
+3. Scholarly citation and accurate attribution
+
+For publications and other scholarly dissemination using the software,
+experimental methodology, architecture diagram, or recorded measurements,
+the project asks authors to:
+
+(a) cite cagra-chunksplice using CITATION.cff and identify the exact source
+    digest, repository revision, or archived artifact used;
+(b) cite the relevant NVIDIA cuVS/CAGRA, MIRAGE-ANNS, and HNSW works listed
+    below and in README.md;
+(c) distinguish this PyTorch mechanism experiment from the upstream
+    implementations, and attribute each reported result to its actual source;
+(d) describe changes to the experimental conditions and avoid presenting the
+    supplied single-seed measurements as universal performance guarantees.
+
+These are scholarly attribution expectations, not additional restrictions on
+use, modification, commercial use, redistribution, or other MIT permissions.
+Failure to include a publication citation does not terminate the MIT grant.
+The mandatory MIT copyright/permission notice must still be retained.
+
+4. Upstream references
+
+CAGRA: Hiroyuki Ootomo, Akira Naruse, Corey Nolet, Ray Wang, Tamas Feher, and
+Yong Wang. CAGRA: Highly Parallel Graph Construction and Approximate Nearest
+Neighbor Search for GPUs. ICDE, 2024.
+https://doi.org/10.1109/ICDE60146.2024.00323
+https://github.com/NVIDIA/cuvs
+
+MIRAGE-ANNS: Sairaj Voruganti and M. Tamer Özsu. MIRAGE-ANNS: Mixed Approach
+Graph-based Indexing for Approximate Nearest Neighbor Search. Proceedings of
+the ACM on Management of Data 3(3), 2025; SIGMOD research track.
+https://doi.org/10.1145/3725325
+https://github.com/dsg-uwaterloo/mirage
+The relevant ANN work is not a SIGCOMM or TOCS publication.
+
+HNSW: Yury A. Malkov and Dmitry A. Yashunin. Efficient and Robust Approximate
+Nearest Neighbor Search Using Hierarchical Navigable Small World Graphs.
+IEEE Transactions on Pattern Analysis and Machine Intelligence.
+https://doi.org/10.1109/TPAMI.2018.2889473
+https://arxiv.org/abs/1603.09320

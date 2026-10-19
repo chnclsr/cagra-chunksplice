@@ -1,0 +1,474 @@
+{
+  "status": "ok",
+  "implementation": "PyTorch CAGRA-hole simulation / MIRAGE-inspired",
+  "environment": {
+    "python": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 16:37:03) [MSC v.1929 64 bit (AMD64)]",
+    "torch": "2.11.0+cu128",
+    "torch_cuda": "12.8",
+    "device": "cuda",
+    "gpu": "NVIDIA GeForce RTX 4070 SUPER",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "parameters": {
+    "device": "cuda",
+    "base": 2048,
+    "chunks": 4,
+    "chunk_size": 256,
+    "dim": 32,
+    "queries": 256,
+    "degree": 24,
+    "ef": 64,
+    "search_width": 4,
+    "steps": 16,
+    "query_batch": 64,
+    "distance_batch": 256,
+    "local_cap": 768,
+    "candidate_cap": 64,
+    "hops": 2,
+    "refine_rounds": 2,
+    "repeats": 3,
+    "seed": 42,
+    "entry_policy": "all",
+    "workload": "drift",
+    "self_test_only": false,
+    "verify_effect": false,
+    "output": "C:\\Users\\PC_9928\\.gemini\\antigravity-cli\\scratch\\cagra_mirage_results.json"
+  },
+  "initial_build_ms": 1.3271999996504746,
+  "initial_build_samples_ms": [
+    1.3324999999895226,
+    1.3271999996504746,
+    1.2771999990945915
+  ],
+  "timing": "median synchronized wall ms; one untimed warmup; resident data; update includes allocations/reverse updates/refinement; excludes data generation, transfers, truth, diagnostics; QPS is batched graph-search throughput, not single-query latency",
+  "query_cohorts": "50% noisy original-data queries, 50% inserted-data queries. Drift queries independently sampled around microcluster centers. Erosion is versus same-stage rebuild on identical queries; stage-zero queries use a different distribution.",
+  "scope": "Simulated chunk-hole mechanism. Not actual cuVS/CAGRA kernels or full MIRAGE. No universal speed/recall guarantee.",
+  "stages": [
+    {
+      "stage": 1,
+      "n": 2304,
+      "methods": {
+        "Rebuild": {
+          "update_ms": 1.5836000002309447,
+          "update_samples_ms": [
+            1.7281000000366475,
+            1.530399998955545,
+            1.5836000002309447
+          ],
+          "query_ms": 53.092099999048514,
+          "query_samples_ms": [
+            53.631400000085705,
+            53.092099999048514,
+            51.46760000025097
+          ],
+          "qps": 4821.809647849452,
+          "recall10": 0.9898437857627869,
+          "old_query_recall10": 0.979687511920929,
+          "new_query_recall10": 1.0,
+          "intra_chunk_edges_all": 6132,
+          "mean_out_degree": 24.0,
+          "latest_chunk_gt10_intra_demand": 0.998828113079071,
+          "latest_chunk_gt10_intra_edge_coverage": 1.0,
+          "old_to_new_edges": 2576
+        },
+        "Naive": {
+          "update_ms": 4.2436999992787605,
+          "update_samples_ms": [
+            4.209400000036112,
+            4.2436999992787605,
+            4.709800001364783
+          ],
+          "query_ms": 53.641499998775544,
+          "query_samples_ms": [
+            49.14269999972021,
+            53.641499998775544,
+            54.80580000039481
+          ],
+          "qps": 4772.424335744594,
+          "recall10": 0.96875,
+          "old_query_recall10": 0.983593761920929,
+          "new_query_recall10": 0.953906238079071,
+          "intra_chunk_edges_all": 0,
+          "mean_out_degree": 24.0,
+          "latest_chunk_gt10_intra_demand": 0.998828113079071,
+          "latest_chunk_gt10_intra_edge_coverage": 0.0,
+          "old_to_new_edges": 1191
+        },
+        "ChunkSplice": {
+          "update_ms": 4.99860000127228,
+          "update_samples_ms": [
+            5.335800000466406,
+            4.99860000127228,
+            4.54139999965264
+          ],
+          "query_ms": 52.05769999884069,
+          "query_samples_ms": [
+            52.05769999884069,
+            51.852700000381446,
+            56.11080000016955
+          ],
+          "qps": 4917.6202560946995,
+          "recall10": 0.991015613079071,
+          "old_query_recall10": 0.9820312857627869,
+          "new_query_recall10": 1.0,
+          "intra_chunk_edges_all": 6132,
+          "mean_out_degree": 24.0,
+          "latest_chunk_gt10_intra_demand": 0.998828113079071,
+          "latest_chunk_gt10_intra_edge_coverage": 1.0,
+          "old_to_new_edges": 1191
+        },
+        "LocalRNG": {
+          "update_ms": 117.47619999914605,
+          "update_samples_ms": [
+            117.39230000057432,
+            117.47619999914605,
+            121.4763000007224
+          ],
+          "query_ms": 51.48420000114129,
+          "query_samples_ms": [
+            51.97440000119968,
+            51.48420000114129,
+            51.09919999995327
+          ],
+          "qps": 4972.399299092247,
+          "recall10": 0.990234375,
+          "old_query_recall10": 0.98046875,
+          "new_query_recall10": 1.0,
+          "intra_chunk_edges_all": 1380,
+          "mean_out_degree": 19.67144203186035,
+          "latest_chunk_gt10_intra_demand": 0.998828113079071,
+          "latest_chunk_gt10_intra_edge_coverage": 0.3859992178333985,
+          "old_to_new_edges": 98,
+          "local_vertices": 768,
+          "local_old_vertices": 512,
+          "modified_row_limit": 768
+        }
+      },
+      "erosion_vs_rebuild": 0.021093785762786865,
+      "recovery_vs_naive": 0.021484375,
+      "splice_recovery_vs_naive": 0.022265613079071045,
+      "rng_gain_vs_splice": -0.0007812380790710449
+    },
+    {
+      "stage": 2,
+      "n": 2560,
+      "methods": {
+        "Naive": {
+          "update_ms": 5.3128999988985015,
+          "update_samples_ms": [
+            5.785499999547028,
+            5.3128999988985015,
+            5.2138000010018
+          ],
+          "query_ms": 105.88319999988016,
+          "query_samples_ms": [
+            105.88319999988016,
+            105.11150000093039,
+            110.74879999978293
+          ],
+          "qps": 2417.7584357130286,
+          "recall10": 0.9378906488418579,
+          "old_query_recall10": 0.979687511920929,
+          "new_query_recall10": 0.8960937857627869,
+          "intra_chunk_edges_all": 0,
+          "mean_out_degree": 24.0,
+          "latest_chunk_gt10_intra_demand": 0.998046875,
+          "latest_chunk_gt10_intra_edge_coverage": 0.0,
+          "old_to_new_edges": 758
+        },
+        "ChunkSplice": {
+          "update_ms": 12.467299999116221,
+          "update_samples_ms": [
+            12.467299999116221,
+            13.710400000491063,
+            12.432400000761845
+          ],
+          "query_ms": 108.68000000118627,
+          "query_samples_ms": [
+            110.31580000053509,
+            108.68000000118627,
+            108.30949999945005
+          ],
+          "qps": 2355.5391976187493,
+          "recall10": 0.9847656488418579,
+          "old_query_recall10": 0.9703125357627869,
+          "new_query_recall10": 0.999218761920929,
+          "intra_chunk_edges_all": 12261,
+          "mean_out_degree": 24.0,
+          "latest_chunk_gt10_intra_demand": 0.998046875,
+          "latest_chunk_gt10_intra_edge_coverage": 1.0,
+          "old_to_new_edges": 416
+        },
+        "LocalRNG": {
+          "update_ms": 245.0158999999985,
+          "update_samples_ms": [
+            245.22609999985434,
+            244.59750000096392,
+            245.0158999999985
+          ],
+          "query_ms": 101.23349999958009,
+          "query_samples_ms": [
+            101.37419999955455,
+            55.96909999985655,
+            101.23349999958009
+          ],
+          "qps": 2528.8071636470327,
+          "recall10": 0.9878906607627869,
+          "old_query_recall10": 0.975781261920929,
+          "new_query_recall10": 1.0,
+          "intra_chunk_edges_all": 2686,
+          "mean_out_degree": 17.422266006469727,
+          "latest_chunk_gt10_intra_demand": 0.998046875,
+          "latest_chunk_gt10_intra_edge_coverage": 0.36712328767123287,
+          "old_to_new_edges": 74,
+          "local_vertices": 768,
+          "local_old_vertices": 512,
+          "modified_row_limit": 768
+        },
+        "Rebuild": {
+          "update_ms": 3.69700000010198,
+          "update_samples_ms": [
+            3.8927999994484708,
+            3.6806999996770173,
+            3.69700000010198
+          ],
+          "query_ms": 109.09229999924719,
+          "query_samples_ms": [
+            116.20579999907932,
+            104.9247999999352,
+            109.09229999924719
+          ],
+          "qps": 2346.6367470643354,
+          "recall10": 0.983593761920929,
+          "old_query_recall10": 0.967968761920929,
+          "new_query_recall10": 0.999218761920929,
+          "intra_chunk_edges_all": 12261,
+          "mean_out_degree": 24.0,
+          "latest_chunk_gt10_intra_demand": 0.998046875,
+          "latest_chunk_gt10_intra_edge_coverage": 1.0,
+          "old_to_new_edges": 725
+        }
+      },
+      "erosion_vs_rebuild": 0.045703113079071045,
+      "recovery_vs_naive": 0.050000011920928955,
+      "splice_recovery_vs_naive": 0.046875,
+      "rng_gain_vs_splice": 0.003125011920928955
+    },
+    {
+      "stage": 3,
+      "n": 2816,
+      "methods": {
+        "ChunkSplice": {
+          "update_ms": 13.296000000991626,
+          "update_samples_ms": [
+            13.861899999028537,
+            13.296000000991626,
+            13.10860000012326
+          ],
+          "query_ms": 80.53640000071027,
+          "query_samples_ms": [
+            103.49160000077973,
+            80.53640000071027,
+            80.10599999943224
+          ],
+          "qps": 3178.68690427859,
+          "recall10": 0.977343738079071,
+          "old_query_recall10": 0.9546875357627869,
+          "new_query_recall10": 1.0,
+          "intra_chunk_edges_all": 18378,
+          "mean_out_degree": 24.0,
+          "latest_chunk_gt10_intra_demand": 0.995312511920929,
+          "latest_chunk_gt10_intra_edge_coverage": 1.0,
+          "old_to_new_edges": 1286
+        },
+        "LocalRNG": {
+          "update_ms": 243.303700000979,
+          "update_samples_ms": [
+            242.6644999995915,
+            246.35230000058073,
+            243.303700000979
+          ],
+          "query_ms": 108.35800000131712,
+          "query_samples_ms": [
+            107.43680000086897,
+            109.16569999972126,
+            108.35800000131712
+          ],
+          "qps": 2362.538991093304,
+          "recall10": 0.990234375,
+          "old_query_recall10": 0.98046875,
+          "new_query_recall10": 1.0,
+          "intra_chunk_edges_all": 4082,
+          "mean_out_degree": 15.664772987365723,
+          "latest_chunk_gt10_intra_demand": 0.995312511920929,
+          "latest_chunk_gt10_intra_edge_coverage": 0.4073783359497645,
+          "old_to_new_edges": 188,
+          "local_vertices": 768,
+          "local_old_vertices": 512,
+          "modified_row_limit": 768
+        },
+        "Rebuild": {
+          "update_ms": 4.331800000727526,
+          "update_samples_ms": [
+            4.331800000727526,
+            4.766799998833449,
+            4.046500000185915
+          ],
+          "query_ms": 111.46069999995234,
+          "query_samples_ms": [
+            106.85049999847251,
+            118.12389999977313,
+            111.46069999995234
+          ],
+          "qps": 2296.7736610312822,
+          "recall10": 0.9671875238418579,
+          "old_query_recall10": 0.934374988079071,
+          "new_query_recall10": 1.0,
+          "intra_chunk_edges_all": 18378,
+          "mean_out_degree": 24.0,
+          "latest_chunk_gt10_intra_demand": 0.995312511920929,
+          "latest_chunk_gt10_intra_edge_coverage": 1.0,
+          "old_to_new_edges": 4347
+        },
+        "Naive": {
+          "update_ms": 11.668799999824842,
+          "update_samples_ms": [
+            11.71760000033828,
+            11.668799999824842,
+            10.772399999041227
+          ],
+          "query_ms": 108.99460000109684,
+          "query_samples_ms": [
+            108.99460000109684,
+            111.65400000027148,
+            108.87829999956011
+          ],
+          "qps": 2348.740212794247,
+          "recall10": 0.9312500357627869,
+          "old_query_recall10": 0.983593761920929,
+          "new_query_recall10": 0.87890625,
+          "intra_chunk_edges_all": 0,
+          "mean_out_degree": 24.0,
+          "latest_chunk_gt10_intra_demand": 0.995312511920929,
+          "latest_chunk_gt10_intra_edge_coverage": 0.0,
+          "old_to_new_edges": 1286
+        }
+      },
+      "erosion_vs_rebuild": 0.035937488079071045,
+      "recovery_vs_naive": 0.058984339237213135,
+      "splice_recovery_vs_naive": 0.04609370231628418,
+      "rng_gain_vs_splice": 0.012890636920928955
+    },
+    {
+      "stage": 4,
+      "n": 3072,
+      "methods": {
+        "LocalRNG": {
+          "update_ms": 264.56689999940863,
+          "update_samples_ms": [
+            240.52020000090124,
+            264.56689999940863,
+            273.82089999991877
+          ],
+          "query_ms": 108.86470000150439,
+          "query_samples_ms": [
+            108.86470000150439,
+            106.51659999894036,
+            114.5859999996901
+          ],
+          "qps": 2351.5427865640777,
+          "recall10": 0.985156238079071,
+          "old_query_recall10": 0.9703125357627869,
+          "new_query_recall10": 1.0,
+          "intra_chunk_edges_all": 5442,
+          "mean_out_degree": 14.484701156616211,
+          "latest_chunk_gt10_intra_demand": 0.9945312738418579,
+          "latest_chunk_gt10_intra_edge_coverage": 0.3880597014925373,
+          "old_to_new_edges": 268,
+          "local_vertices": 768,
+          "local_old_vertices": 512,
+          "modified_row_limit": 768
+        },
+        "Rebuild": {
+          "update_ms": 8.855800000674208,
+          "update_samples_ms": [
+            6.899800000610412,
+            8.855800000674208,
+            8.949999999458669
+          ],
+          "query_ms": 110.87509999924805,
+          "query_samples_ms": [
+            110.87509999924805,
+            104.42999999941094,
+            113.21250000037253
+          ],
+          "qps": 2308.904343732147,
+          "recall10": 0.956250011920929,
+          "old_query_recall10": 0.9125000238418579,
+          "new_query_recall10": 1.0,
+          "intra_chunk_edges_all": 24466,
+          "mean_out_degree": 24.0,
+          "latest_chunk_gt10_intra_demand": 0.9945312738418579,
+          "latest_chunk_gt10_intra_edge_coverage": 1.0,
+          "old_to_new_edges": 3024
+        },
+        "Naive": {
+          "update_ms": 13.486699999702978,
+          "update_samples_ms": [
+            13.15710000017134,
+            13.486699999702978,
+            20.409300001119846
+          ],
+          "query_ms": 109.4466000013199,
+          "query_samples_ms": [
+            95.97299999950337,
+            109.4466000013199,
+            111.04369999884511
+          ],
+          "qps": 2339.0402259815537,
+          "recall10": 0.9398437738418579,
+          "old_query_recall10": 0.969531238079071,
+          "new_query_recall10": 0.91015625,
+          "intra_chunk_edges_all": 0,
+          "mean_out_degree": 24.0,
+          "latest_chunk_gt10_intra_demand": 0.9945312738418579,
+          "latest_chunk_gt10_intra_edge_coverage": 0.0,
+          "old_to_new_edges": 1263
+        },
+        "ChunkSplice": {
+          "update_ms": 14.727899999343208,
+          "update_samples_ms": [
+            14.727899999343208,
+            14.224800001102267,
+            15.170700000453508
+          ],
+          "query_ms": 107.0361000001867,
+          "query_samples_ms": [
+            105.01680000015767,
+            113.31679999966582,
+            107.0361000001867
+          ],
+          "qps": 2391.7164395895725,
+          "recall10": 0.969921886920929,
+          "old_query_recall10": 0.9398437738418579,
+          "new_query_recall10": 1.0,
+          "intra_chunk_edges_all": 24466,
+          "mean_out_degree": 24.0,
+          "latest_chunk_gt10_intra_demand": 0.9945312738418579,
+          "latest_chunk_gt10_intra_edge_coverage": 1.0,
+          "old_to_new_edges": 699
+        }
+      },
+      "erosion_vs_rebuild": 0.016406238079071045,
+      "recovery_vs_naive": 0.045312464237213135,
+      "splice_recovery_vs_naive": 0.030078113079071045,
+      "rng_gain_vs_splice": 0.01523435115814209
+    }
+  ],
+  "base_query": {
+    "recall10": 0.991015613079071,
+    "qps": 3596.940352677938
+  },
+  "effect_demonstrated": false,
+  "peak_cuda_allocated_mb": 31.22998046875
+}

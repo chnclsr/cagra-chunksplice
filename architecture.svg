@@ -1,0 +1,127 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1330" viewBox="0 0 1600 1330" role="img" aria-labelledby="title description">
+  <title id="title">cagra-chunksplice: system architecture and experimental workflow</title>
+  <desc id="description">A single Python process generates seeded synthetic data on the CPU and transfers tensors to PyTorch on the selected device. A shared exact base graph feeds independent Rebuild, Naive, ChunkSplice, and optional LocalRNG update trajectories. Each evaluated graph uses common queries and search entries. Candidate-based beam traversal is compared with exact ground truth, while separate untimed diagnostics validate structure and stream reachability. Measurements and source provenance are saved as JSON. CUDA is the default; CPU is an explicit debug option. LocalRNG runs only in benchmark mode.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L9 4.5 L0 9 Z" fill="#47667f" />
+    </marker>
+    <marker id="mutedArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L8 4 L0 8 Z" fill="#758b9d" />
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1330" fill="#fff" />
+  <rect width="1600" height="10" fill="#153c5a" />
+  <text x="64" y="65" class="title" font-family="Arial, sans-serif" fill="#172b42" font-size="35px" font-weight="700" letter-spacing="-.6px">cagra-chunksplice</text>
+  <text x="64" y="96" class="subtitle" font-family="Arial, sans-serif" fill="#52667b" font-size="18px">Controlled graph-update experiments · PyTorch mechanism simulation</text>
+  <text x="1536" y="65" text-anchor="end" class="section" font-family="Arial, sans-serif" fill="#52667b" font-size="14px" font-weight="700" letter-spacing="1.7px">SYSTEM ARCHITECTURE</text>
+
+  <rect x="48" y="126" width="1504" height="154" rx="15" fill="#f3f6f9" stroke="#d8e1e9" />
+  <text x="72" y="154" class="section" font-family="Arial, sans-serif" fill="#52667b" font-size="14px" font-weight="700" letter-spacing="1.7px">HOST · ONE PYTHON PROCESS</text>
+  <line x1="520" y1="175" x2="520" y2="252" stroke="#d1dce6" />
+  <line x1="1044" y1="175" x2="1044" y2="252" stroke="#d1dce6" />
+  <text x="80" y="191" class="heading" font-family="Arial, sans-serif" fill="#172b42" font-size="22px" font-weight="650">Configuration and built-in checks</text>
+  <text x="80" y="220" class="body" font-family="Arial, sans-serif" fill="#374f65" font-size="17px">CLI validation · device selection · self-tests</text>
+  <text x="80" y="246" class="small" font-family="Arial, sans-serif" fill="#52667b" font-size="15px">benchmark / sweep / stream</text>
+  <text x="552" y="191" class="heading" font-family="Arial, sans-serif" fill="#172b42" font-size="22px" font-weight="650">Seeded data and query generation</text>
+  <text x="552" y="220" class="body" font-family="Arial, sans-serif" fill="#374f65" font-size="17px">Gaussian base · drift microclusters / IID</text>
+  <text x="552" y="246" class="small" font-family="Arial, sans-serif" fill="#52667b" font-size="15px">Common data, queries, and entry IDs for comparison</text>
+  <text x="1076" y="191" class="heading" font-family="Arial, sans-serif" fill="#172b42" font-size="22px" font-weight="650">Measurement controller</text>
+  <text x="1076" y="220" class="body" font-family="Arial, sans-serif" fill="#374f65" font-size="17px">Warmup + repeated timed operations</text>
+  <text x="1076" y="246" class="small" font-family="Arial, sans-serif" fill="#52667b" font-size="15px">Rotate method order · synchronize CUDA</text>
+
+  <path d="M800 280 V364" class="flow" fill="none" stroke="#47667f" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow)" />
+  <rect x="813" y="304" width="224" height="28" fill="#fff" />
+  <text x="822" y="324" class="small" font-family="Arial, sans-serif" fill="#52667b" font-size="15px">Transfer to selected device</text>
+
+  <rect x="48" y="340" width="1504" height="742" rx="16" fill="#f8fafc" stroke="#becedc" stroke-width="1.5" />
+  <text x="72" y="370" class="section" font-family="Arial, sans-serif" fill="#52667b" font-size="14px" font-weight="700" letter-spacing="1.7px">PYTORCH TENSOR EXECUTION · CUDA DEFAULT / CPU DEBUG</text>
+
+  <rect x="560" y="390" width="480" height="88" rx="10" class="card" fill="#fff" stroke="#c6d2de" stroke-width="1.5" />
+  <text x="800" y="425" text-anchor="middle" class="heading" font-family="Arial, sans-serif" fill="#172b42" font-size="22px" font-weight="650">Shared initial exact kNN graph</text>
+  <text x="800" y="454" text-anchor="middle" class="body" font-family="Arial, sans-serif" fill="#374f65" font-size="17px">Blocked distances · identical initial state</text>
+
+  <path d="M800 478 V509" class="bus" fill="none" stroke="#47667f" stroke-width="2.3" stroke-linejoin="round" />
+  <path d="M264 509 H1340" class="bus" fill="none" stroke="#47667f" stroke-width="2.3" stroke-linejoin="round" />
+  <circle cx="800" cy="509" r="4" fill="#47667f" />
+  <path d="M264 509 V550" class="flow" fill="none" stroke="#47667f" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow)" />
+  <path d="M624 509 V550" class="flow" fill="none" stroke="#47667f" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow)" />
+  <path d="M984 509 V550" class="flow" fill="none" stroke="#47667f" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow)" />
+  <path d="M1340 509 V550" class="flow" fill="none" stroke="#47667f" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow)" />
+  <text x="800" y="536" text-anchor="middle" class="small" font-family="Arial, sans-serif" fill="#52667b" font-size="15px">Independent update trajectories; identical incoming vectors</text>
+
+  <rect x="104" y="550" width="320" height="150" rx="11" class="card" fill="#fff" stroke="#c6d2de" stroke-width="1.5" />
+  <text x="128" y="586" class="heading" font-family="Arial, sans-serif" fill="#172b42" font-size="22px" font-weight="650">Rebuild</text>
+  <text x="128" y="618" class="body" font-family="Arial, sans-serif" fill="#374f65" font-size="17px">Exact kNN over all active vectors</text>
+  <text x="128" y="645" class="body" font-family="Arial, sans-serif" fill="#374f65" font-size="17px">Topology reference after each update</text>
+  <text x="128" y="677" class="code" font-family="Arial, sans-serif" fill="#374f65" font-size="15px">benchmark · sweep</text>
+
+  <rect x="464" y="550" width="320" height="150" rx="11" class="card" fill="#fff" stroke="#c6d2de" stroke-width="1.5" />
+  <text x="488" y="586" class="heading" font-family="Arial, sans-serif" fill="#172b42" font-size="22px" font-weight="650">Naive</text>
+  <text x="488" y="618" class="body" font-family="Arial, sans-serif" fill="#374f65" font-size="17px">New → old nearest neighbors</text>
+  <text x="488" y="645" class="body" font-family="Arial, sans-serif" fill="#374f65" font-size="17px">Degree-capped reverse proposals</text>
+  <text x="488" y="677" class="code" font-family="Arial, sans-serif" fill="#374f65" font-size="15px">benchmark · sweep · stream</text>
+
+  <rect x="824" y="550" width="320" height="150" rx="11" class="emphasis" fill="#eef7fa" stroke="#26758b" stroke-width="2" />
+  <rect x="824" y="565" width="4" height="120" fill="#26758b" />
+  <text x="848" y="586" class="heading" font-family="Arial, sans-serif" fill="#172b42" font-size="22px" font-weight="650">ChunkSplice</text>
+  <text x="848" y="618" class="body" font-family="Arial, sans-serif" fill="#374f65" font-size="17px">Naive + exact intra-chunk kNN</text>
+  <text x="848" y="645" class="body" font-family="Arial, sans-serif" fill="#374f65" font-size="17px">Merge / deduplicate / cap new rows</text>
+  <text x="848" y="677" class="code" font-family="Arial, sans-serif" fill="#374f65" font-size="15px">benchmark · sweep · stream</text>
+
+  <rect x="1180" y="550" width="320" height="150" rx="11" class="optional" fill="#fbfcfd" stroke="#8a9bac" stroke-width="1.5" stroke-dasharray="6 5" />
+  <text x="1204" y="586" class="heading" font-family="Arial, sans-serif" fill="#172b42" font-size="22px" font-weight="650">LocalRNG</text>
+  <text x="1204" y="618" class="body" font-family="Arial, sans-serif" fill="#374f65" font-size="17px">Naive + bounded neighborhood</text>
+  <text x="1204" y="645" class="body" font-family="Arial, sans-serif" fill="#374f65" font-size="17px">Neighbor exchange + greedy pruning</text>
+  <text x="1204" y="677" class="code" font-family="Arial, sans-serif" fill="#374f65" font-size="15px">benchmark only</text>
+
+  <path d="M264 700 V735 H1340 V700" class="bus" fill="none" stroke="#47667f" stroke-width="2.3" stroke-linejoin="round" />
+  <path d="M624 700 V735 M984 700 V735" class="bus" fill="none" stroke="#47667f" stroke-width="2.3" stroke-linejoin="round" />
+  <circle cx="800" cy="735" r="4" fill="#47667f" />
+  <path d="M800 735 V778" class="flow" fill="none" stroke="#47667f" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  <rect x="540" y="778" width="520" height="104" rx="11" class="card" fill="#fff" stroke="#c6d2de" stroke-width="1.5" />
+  <text x="800" y="813" text-anchor="middle" class="heading" font-family="Arial, sans-serif" fill="#172b42" font-size="22px" font-weight="650">Common fixed-budget graph traversal</text>
+  <text x="800" y="842" text-anchor="middle" class="body" font-family="Arial, sans-serif" fill="#374f65" font-size="17px">Shared checkpoint queries and search entries</text>
+  <text x="800" y="867" text-anchor="middle" class="code" font-family="Arial, sans-serif" fill="#374f65" font-size="15px">Recorded: ef=64 · width=4 · rounds=16</text>
+
+  <path d="M560 434 H80 V976 H104" class="evidence" fill="none" stroke="#758b9d" stroke-width="1.8" stroke-dasharray="6 5" stroke-linejoin="round" marker-end="url(#mutedArrow)" />
+  <text transform="translate(71 830) rotate(-90)" class="small" font-family="Arial, sans-serif" fill="#52667b" font-size="15px">Active vector data · untimed truth</text>
+
+  <path d="M1340 735 H1522 V976 H1500" class="evidence" fill="none" stroke="#758b9d" stroke-width="1.8" stroke-dasharray="6 5" stroke-linejoin="round" marker-end="url(#mutedArrow)" />
+  <text transform="translate(1541 822) rotate(90)" class="small" font-family="Arial, sans-serif" fill="#52667b" font-size="15px">Graph snapshots · untimed diagnostics</text>
+
+  <rect x="104" y="928" width="360" height="108" rx="11" class="card" fill="#fff" stroke="#c6d2de" stroke-width="1.5" />
+  <text x="128" y="962" class="heading" font-family="Arial, sans-serif" fill="#172b42" font-size="22px" font-weight="650">Exact ground-truth oracle</text>
+  <text x="128" y="991" class="body" font-family="Arial, sans-serif" fill="#374f65" font-size="17px">Blocked exact top-10 over active data</text>
+  <text x="128" y="1017" class="small" font-family="Arial, sans-serif" fill="#52667b" font-size="15px">Separate from query traversal</text>
+
+  <rect x="560" y="928" width="480" height="108" rx="11" class="emphasis" fill="#eef7fa" stroke="#26758b" stroke-width="2" />
+  <text x="800" y="962" text-anchor="middle" class="heading" font-family="Arial, sans-serif" fill="#172b42" font-size="22px" font-weight="650">Evaluation and measurement records</text>
+  <text x="800" y="991" text-anchor="middle" class="body" font-family="Arial, sans-serif" fill="#374f65" font-size="17px">Cohort Recall@10 · query QPS · update latency</text>
+  <text x="800" y="1017" text-anchor="middle" class="small" font-family="Arial, sans-serif" fill="#52667b" font-size="15px">Structure · stream reachability · peak allocation</text>
+
+  <rect x="1136" y="928" width="364" height="108" rx="11" class="card" fill="#fff" stroke="#c6d2de" stroke-width="1.5" />
+  <text x="1160" y="962" class="heading" font-family="Arial, sans-serif" fill="#172b42" font-size="22px" font-weight="650">Validation and connectivity</text>
+  <text x="1160" y="991" class="body" font-family="Arial, sans-serif" fill="#374f65" font-size="17px">Degree / edge checks · intra-chunk links</text>
+  <text x="1160" y="1017" class="small" font-family="Arial, sans-serif" fill="#52667b" font-size="15px">Stream: fixed-base reachability / orphans</text>
+
+  <path d="M800 882 V928" class="flow" fill="none" stroke="#47667f" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow)" />
+  <path d="M464 976 H560" class="flow" fill="none" stroke="#47667f" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow)" />
+  <path d="M1136 976 H1040" class="flow" fill="none" stroke="#47667f" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow)" />
+  <path d="M800 1036 V1142" class="flow" fill="none" stroke="#47667f" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow)" />
+  <rect x="816" y="1092" width="206" height="28" fill="#fff" />
+  <text x="824" y="1112" class="small" font-family="Arial, sans-serif" fill="#52667b" font-size="15px">Serialize metrics and provenance</text>
+
+  <rect x="344" y="1142" width="912" height="98" rx="12" fill="#153c5a" />
+  <text x="800" y="1179" text-anchor="middle" font-family="Arial, sans-serif" fill="#fff" font-size="23px" font-weight="650">Versioned JSON experiment artifacts</text>
+  <text x="800" y="1209" text-anchor="middle" font-family="Arial, sans-serif" fill="#e0edf5" font-size="17px">sweep_results.json · stream_results.json · parameters · samples · source SHA-256</text>
+
+  <line x1="64" y1="1264" x2="1536" y2="1264" stroke="#d8e1e9" />
+  <path d="M76 1292 H123" class="flow" fill="none" stroke="#47667f" stroke-width="2.3" stroke-linejoin="round" marker-end="url(#arrow)" />
+  <text x="138" y="1298" class="small" font-family="Arial, sans-serif" fill="#52667b" font-size="15px">Main evaluation flow</text>
+  <path d="M376 1292 H423" class="evidence" fill="none" stroke="#758b9d" stroke-width="1.8" stroke-dasharray="6 5" stroke-linejoin="round" marker-end="url(#mutedArrow)" />
+  <text x="438" y="1298" class="small" font-family="Arial, sans-serif" fill="#52667b" font-size="15px">Untimed reference / diagnostics</text>
+  <text x="1536" y="1298" text-anchor="end" class="small" font-family="Arial, sans-serif" fill="#52667b" font-size="15px">Research prototype; not a cuVS, full MIRAGE-ANNS, or HNSW implementation</text>
+</svg>

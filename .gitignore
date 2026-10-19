@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+_*.py
+_*.txt
+_*.png
+_*.json
+*.error.json
+cagra_mirage_results.error.json
