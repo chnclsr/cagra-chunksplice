@@ -18,6 +18,32 @@ relative to Naive while lowering original-base recall. Update cost is higher.
 See [recorded results](docs/results.md) and
 [methodology, limitations and upstream references](docs/methodology.md).
 
+## Key experimental results
+
+Detailed benchmark logs and full floating-point values are preserved in [docs/results.md](docs/results.md) and [results/](results/).
+
+### Controlled chunk-size sweep (2048-dim, degree 24)
+
+| Chunk size | Updates | Method | Mixed Recall@10 | Inserted R@10 | Shared-tail R@10 | Update trajectory (ms) | Mixed QPS |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **64** | 64 | Naive | 0.728 | 0.802 | 0.992 | 622.0 ms | 2356.1 |
+| **64** | 64 | **ChunkSplice** | **0.734** | **0.835** | **0.992** | 1880.2 ms | 2561.2 |
+| **256** | 16 | Naive | 0.889 | 0.873 | 0.895 | 292.1 ms | 2340.4 |
+| **256** | 16 | **ChunkSplice** | **0.925** | **0.964** | **0.998** | 527.8 ms | 2291.7 |
+| **1024** | 4 | Naive | 0.881 | 0.858 | 0.905 | 72.0 ms | 2201.1 |
+| **1024** | 4 | **ChunkSplice** | **0.929** | **0.959** | **0.998** | 126.9 ms | 2204.7 |
+| **2048** | 2 | Naive | 0.886 | 0.862 | 0.908 | 40.9 ms | 2223.3 |
+| **2048** | 2 | **ChunkSplice** | **0.934** | **0.965** | **0.998** | 70.1 ms | 2243.2 |
+
+### Streaming experiment (4 consecutive updates of 256 vectors)
+
+| Step | Method | Mixed Recall@10 | Inserted R@10 | Newest Chunk R@10 | Query Throughput |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Update 1** | Naive | 0.964 | 0.943 | 0.941 | 3862.8 QPS |
+| **Update 1** | **ChunkSplice** | **0.992** | **1.000** | **1.000** | **4870.2 QPS** |
+| **Update 4** | Naive | 0.927 | 0.887 | 0.883 | 4505.8 QPS |
+| **Update 4** | **ChunkSplice** | **0.970** | **1.000** | **0.999** | **4919.8 QPS** |
+
 ## Install and run
 
 Requires Python 3.10+ and PyTorch 2.0+. Install a suitable PyTorch build using
