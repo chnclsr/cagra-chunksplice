@@ -1,6 +1,7 @@
 """CAGRA chunk-hole simulation and MIRAGE-inspired graph repair.
 
-This is a PyTorch mechanism study, not a cuVS CAGRA or full MIRAGE benchmark.
+Default modes are PyTorch mechanism studies. External mode adds optional native
+FAISS/cuVS adapters and explicitly labeled portable simulators.
 Use --device cpu for debugging, --mode sweep for controlled chunk partitions,
 and --mode stream for checkpointed updates. CUDA is the default device.
 """
@@ -72,8 +73,14 @@ def arguments(argv=None):
                    help="Common random starts over all active nodes; old is a stable-anchor control.")
     p.add_argument("--workload", choices=("drift", "iid", "high-lid"), default="drift",
                    help="drift: temporal dense microclusters; iid: Gaussian control; high-lid: full-dimensional isotropic Gaussian (use --dim 128 or higher).")
-    p.add_argument("--mode", choices=("benchmark", "sweep", "stream", "stress"), default="benchmark",
-                   help="benchmark: standard run; sweep: chunk-size sweep; stream: checkpointed streaming; stress: streaming with global baselines (default 100 epochs).")
+    p.add_argument("--mode", choices=("benchmark", "sweep", "stream", "stress", "external"), default="benchmark",
+                   help="benchmark: standard run; sweep: chunk-size sweep; stream: checkpointed streaming; stress: streaming with global baselines (default 100 epochs); external: native/simulated index comparison.")
+    p.add_argument("--external-backend", choices=("auto", "native", "simulated"), default="auto",
+                   help="External indexes: auto selects native or labeled fallback; native requires libraries/hardware; simulated is portable.")
+    p.add_argument("--mirage-buffer-capacity", type=int, default=256,
+                   help="MIRAGE-inspired buffer size in vectors before synchronous merge.")
+    p.add_argument("--hnsw-m", type=int, default=32)
+    p.add_argument("--hnsw-ef-construction", type=int, default=80)
     p.add_argument("--sweep-chunk-sizes", type=int, nargs="+",
                    default=[64, 256, 1024, 2048],
                    help="Sweep partitions of one shared corpus, in nodes per update.")
@@ -93,7 +100,8 @@ def arguments(argv=None):
                 "search_width", "steps", "query_batch", "distance_batch", "local_cap",
                 "candidate_cap", "refine_rounds", "repeats", "sweep_total",
                 "stream_eval_every", "rebuild_pool", "insertion_ef",
-                "insertion_search_width", "insertion_steps", "age_queries")
+                "insertion_search_width", "insertion_steps", "age_queries",
+                "mirage_buffer_capacity", "hnsw_m", "hnsw_ef_construction")
     for key in positive:
         if getattr(a, key) <= 0:
             p.error("--" + key.replace("_", "-") + " must be positive")
@@ -153,7 +161,10 @@ def main(argv=None):
             self_test(device)
             if a.self_test_only:
                 return 0
-            if a.mode == "sweep":
+            if a.mode == "external":
+                from cagra_chunksplice.runners.external import benchmark_external
+                report = benchmark_external(a, device)
+            elif a.mode == "sweep":
                 report = run_sweep(a, device)
             elif a.mode in ("stream", "stress"):
                 report = run_stream(a, device)
