@@ -26,12 +26,15 @@ In modern GPU-accelerated vector search (such as cuVS/CAGRA, MIRAGE-ANNS, and Di
 
 Standard incremental attachment ("Naive") operates under a snapshot projection paradigm:
 1. **Unidirectional Attachment**: When a new chunk of vectors $\mathcal{C}_{new}$ arrives, each vector $u \in \mathcal{C}_{new}$ independently selects its $R$ outgoing neighbors strictly from the existing base snapshot $V_{old}$.
-2. **Reverse Edge Injection**: To maintain bidirectionality and avoid sinkhole nodes, earlier nodes in $V_{old}$ receive reverse edge proposals from $\mathcal{C}_{new}$, capped at degree $R$.
-3. **The Intra-Chunk Void**: Crucially, **no edges are formed among vectors within $\mathcal{C}_{new}$**.
+2. **Reverse Edge Injection**: To avoid sinkhole nodes, earlier nodes in $V_{old}$ receive reverse edge proposals from $\mathcal{C}_{new}$, capped at degree $R$.
+3. **The Intra-Chunk Void**: Crucially, **no edges are formed among vectors within $\mathcal{C}_{new}$** in either direction. The induced subgraph on $\mathcal{C}_{new}$ is completely edge-free (`naive.py:14`).
 
-When $\mathcal{C}_{new}$ represents a coherent topical cluster, dense semantic cohort, or localized manifold, greedy beam search encounters severe path fragmentation:
-- **Navigational Blindness**: Queries seeking neighbors within $\mathcal{C}_{new}$ enter the cluster via a single entry node. Because vectors in $\mathcal{C}_{new}$ have zero intra-chunk edges connecting them, the beam cannot traverse locally across the cluster. It is forced to backtrack into $V_{old}$ and attempt re-entry, rapidly exhausting the search step budget ($L_{steps}$).
-- **Recall Collapse**: In empirical benchmarks, this structural pathology causes Mixed Recall to collapse to **~0.72** on small chunk sizes and limits streaming throughput.
+### Structural pathology in clustered workloads
+
+While 2-hop traversals ($u \to w \to v$ through an intermediate base node $w \in V_{old}$) exist in theory, dense semantic cohorts induce severe topological failure:
+- **Boundary Node Saturation**: When $\mathcal{C}_{new}$ forms a tight semantic cluster, all $|\mathcal{C}_{new}|$ vectors attach to the same small set of boundary base nodes $\mathcal{B} \subset V_{old}$.
+- **In-Degree Starvation & Orphan Influx**: Because each node in $\mathcal{B}$ can retain at most $R$ reverse edges, proposals compete and are evicted (`naive.py:30-33`). Consequently, $\mathcal{C}_{new}$ receives at most $|\mathcal{B}| \cdot R \ll |\mathcal{C}_{new}|$ total entry edges. A large fraction of new nodes remain with in-degree 0 (unreachable unless selected as search start seeds).
+- **Beam Backtracking & Step Exhaustion**: Within the cluster, greedy beam search cannot execute local monotone gradient descent. From any $c \in \mathcal{C}_{new}$, all out-edges point back to older, more distant base nodes. The beam is forced to cycle through boundary nodes $\mathcal{B}$, rapidly exhausting the search step budget ($L_{steps}$) and degrading recall.
 
 ## Proposed solution: ChunkSplice degree budgeting
 
