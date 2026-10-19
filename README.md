@@ -25,16 +25,16 @@ In modern GPU-accelerated vector search (such as cuVS/CAGRA, MIRAGE-ANNS, and Di
 ### The Naive snapshot projection failure mode
 
 Standard incremental attachment ("Naive") operates under a snapshot projection paradigm:
-1. **Unidirectional Attachment**: When a new chunk of vectors $\mathcal{C}_{new}$ arrives, each vector $u \in \mathcal{C}_{new}$ independently selects its $R$ outgoing neighbors strictly from the existing base snapshot $V_{old}$.
-2. **Reverse Edge Injection**: To avoid sinkhole nodes, earlier nodes in $V_{old}$ receive reverse edge proposals from $\mathcal{C}_{new}$, capped at degree $R$.
-3. **The Intra-Chunk Void**: Crucially, **no edges are formed among vectors within $\mathcal{C}_{new}$** in either direction. The induced subgraph on $\mathcal{C}_{new}$ is completely edge-free (`naive.py:14`).
+1. **Unidirectional Attachment**: When a new chunk of vectors `C_new` arrives, each vector `u` in `C_new` independently selects its `R` outgoing neighbors strictly from the existing base snapshot `V_old`.
+2. **Reverse Edge Injection**: To avoid sinkhole nodes, earlier nodes in `V_old` receive reverse edge proposals from `C_new`, capped at degree `R`.
+3. **The Intra-Chunk Void**: Crucially, **no edges are formed among vectors within `C_new`** in either direction. The induced subgraph on `C_new` is completely edge-free (`naive.py:14`).
 
 ### Structural pathology in clustered workloads
 
-While 2-hop traversals ($u \to w \to v$ through an intermediate base node $w \in V_{old}$) exist in theory, dense semantic cohorts induce severe topological failure:
-- **Boundary Node Saturation**: When $\mathcal{C}_{new}$ forms a tight semantic cluster, all $|\mathcal{C}_{new}|$ vectors attach to the same small set of boundary base nodes $\mathcal{B} \subset V_{old}$.
-- **In-Degree Starvation & Orphan Influx**: Because each node in $\mathcal{B}$ can retain at most $R$ reverse edges, proposals compete and are evicted (`naive.py:30-33`). Consequently, $\mathcal{C}_{new}$ receives at most $|\mathcal{B}| \cdot R \ll |\mathcal{C}_{new}|$ total entry edges. A large fraction of new nodes remain with in-degree 0 (unreachable unless selected as search start seeds).
-- **Beam Backtracking & Step Exhaustion**: Within the cluster, greedy beam search cannot execute local monotone gradient descent. From any $c \in \mathcal{C}_{new}$, all out-edges point back to older, more distant base nodes. The beam is forced to cycle through boundary nodes $\mathcal{B}$, rapidly exhausting the search step budget ($L_{steps}$) and degrading recall.
+While 2-hop traversals (`u -> w -> v` through an intermediate base node `w` in `V_old`) exist in theory, dense semantic cohorts induce severe topological failure:
+- **Boundary Node Saturation**: When `C_new` forms a tight semantic cluster, all vectors in `C_new` attach to the same small set of boundary base nodes `B` in `V_old`.
+- **In-Degree Starvation & Orphan Influx**: Because each node in `B` can retain at most `R` reverse edges, proposals compete and are evicted (`naive.py:30-33`). Consequently, `C_new` receives at most `|B| * R << |C_new|` total entry edges. A large fraction of new nodes remain with in-degree 0 (unreachable unless selected as search start seeds).
+- **Beam Backtracking & Step Exhaustion**: Within the cluster, greedy beam search cannot execute local monotone gradient descent. From any node in `C_new`, all out-edges point back to older, more distant base nodes. The beam is forced to cycle through boundary nodes `B`, rapidly exhausting the search step budget (`L_steps`) and degrading recall.
 
 ## Proposed solution: ChunkSplice degree budgeting
 
@@ -50,15 +50,15 @@ Total Out-Degree Budget: R (e.g., R = 24)
 
 ### Algorithmic mechanisms
 
-1. **Explicit Edge Partitioning**: For every vector $u \in \mathcal{C}_{new}$, out-degree capacity $R$ is strictly split into:
-   - **Bridge edges ($R_{bridge}$)**: Outgoing connections directed into the existing base graph $V_{old}$, ensuring backward navigability and entry path retention.
-   - **Peer edges ($R_{intra}$)**: Dedicated intra-chunk connections connecting vectors within $\mathcal{C}_{new}$.
+1. **Explicit Edge Partitioning**: For every vector `u` in `C_new`, out-degree capacity `R` is strictly split into:
+   - **Bridge edges (`R_bridge`)**: Outgoing connections directed into the existing base graph `V_old`, ensuring backward navigability and entry path retention.
+   - **Peer edges (`R_intra`)**: Dedicated intra-chunk connections connecting vectors within `C_new`.
 2. **Cohort-Local Relative Neighborhood Graph (RNG) Pruning**:
    - Intra-chunk edges are not chosen via naive kNN (which would create redundant, highly collinear cliques).
-   - An candidate pool of size $R_{pool}$ within $\mathcal{C}_{new}$ is evaluated against Gabriel / RNG criteria: an edge $(u, v)$ is pruned if there exists a mutual neighbor $w \in \mathcal{C}_{new}$ such that:
-     $$\max(d(u, w), d(v, w)) < d(u, v)$$
-   - This enforces diverse, angularly distributed intra-cluster paths while strictly bounding local clustering overhead to $O(|\mathcal{C}_{new}|^2)$ on GPU tensors.
-3. **Preserved Reverse Convergence**: Backward proposals from $\mathcal{C}_{new}$ into $V_{old}$ remain intact, ensuring nodes in $V_{old}$ can route queries forward into newly appended cohorts.
+   - A candidate pool of size `R_pool` within `C_new` is evaluated against Gabriel / RNG criteria: an edge `(u, v)` is pruned if there exists a mutual neighbor `w` in `C_new` such that:
+     `max(dist(u, w), dist(v, w)) < dist(u, v)`
+   - This enforces diverse, angularly distributed intra-cluster paths while strictly bounding local clustering overhead to `O(|C_new|^2)` on GPU tensors.
+3. **Preserved Reverse Convergence**: Backward proposals from `C_new` into `V_old` remain intact, ensuring nodes in `V_old` can route queries forward into newly appended cohorts.
 
 ## Comparative analysis and related work
 
