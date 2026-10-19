@@ -1,0 +1,162 @@
+"""CAGRA chunk-hole simulation and MIRAGE-inspired graph repair.
+
+This is a PyTorch mechanism study, not a cuVS CAGRA or full MIRAGE benchmark.
+Use --device cpu for debugging, --mode sweep for controlled chunk partitions,
+and --mode stream for checkpointed updates. CUDA is the default device.
+"""
+from __future__ import annotations
+
+import argparse
+import datetime
+import importlib.metadata
+import sys
+from pathlib import Path
+
+
+def arguments(argv=None):
+    p = argparse.ArgumentParser(description=__doc__,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--device", choices=("cuda", "cpu"), default="cuda",
+                   help="CPU is an explicit debug option; no silent CUDA fallback.")
+    p.add_argument("--base", type=int, default=2048)
+    p.add_argument("--chunks", type=int, default=4,
+                   help="Number of updates in benchmark/stream mode.")
+    p.add_argument("--chunk-size", type=int, default=256,
+                   help="Update size; in sweep, fixed data-generation block size.")
+    p.add_argument("--dim", type=int, default=32)
+    p.add_argument("--queries", type=int, default=256)
+    p.add_argument("--degree", type=int, default=24)
+    p.add_argument("--ef", type=int, default=64)
+    p.add_argument("--search-width", type=int, default=4)
+    p.add_argument("--steps", type=int, default=16)
+    p.add_argument("--query-batch", type=int, default=64)
+    p.add_argument("--distance-batch", type=int, default=256)
+    p.add_argument("--local-cap", type=int, default=768)
+    p.add_argument("--candidate-cap", type=int, default=64)
+    p.add_argument("--hops", type=int, choices=(1, 2), default=2)
+    p.add_argument("--refine-rounds", type=int, default=2)
+    p.add_argument("--alpha", type=float, default=1.0,
+                   help="LocalRNG occlusion slack (>=1); 1 is plain greedy RNG.")
+    p.add_argument("--route", type=int, default=0,
+                   help="LocalRNG slots reserved per row for old-cohort routing edges.")
+    p.add_argument("--cohort-protect", action="store_true",
+                   help="LocalRNG cohort-local occlusion: old/new nodes never occlude each other.")
+    p.add_argument("--backfill", action="store_true",
+                   help="LocalRNG fills empty slots with RNG-rejected candidates by distance.")
+    p.add_argument("--splice-intra", type=int, default=6,
+                   help="ChunkSplice slots per new row for same-chunk peers; rest stay new->old bridges.")
+    p.add_argument("--splice-pool", type=int, default=24,
+                   help="ChunkSplice nearest-peer pool that RNG picks the peer slots from.")
+    p.add_argument("--splice-alpha", type=float, default=1.0,
+                   help="ChunkSplice RNG occlusion slack among peers (>=1).")
+    p.add_argument("--repeats", type=int, default=3)
+    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--entry-policy", choices=("all", "old"), default="all",
+                   help="Common random starts over all active nodes; old is a stable-anchor control.")
+    p.add_argument("--workload", choices=("drift", "iid"), default="drift",
+                   help="drift: temporal dense microclusters; iid: Gaussian control.")
+    p.add_argument("--mode", choices=("benchmark", "sweep", "stream"), default="benchmark",
+                   help="benchmark: standard run; sweep: chunk-size sweep; stream: long-horizon streaming.")
+    p.add_argument("--sweep-chunk-sizes", type=int, nargs="+",
+                   default=[64, 256, 1024, 2048],
+                   help="Sweep partitions of one shared corpus, in nodes per update.")
+    p.add_argument("--sweep-total", type=int, default=4096,
+                   help="Fixed inserted-node count in sweep (replaces --chunks).")
+    p.add_argument("--stream-eval-every", type=int, default=10,
+                   help="Evaluate stream at first, last and every Nth update.")
+    p.add_argument("--self-test-only", action="store_true")
+    p.add_argument("--verify-effect", action="store_true",
+                   help="Fail unless final recall erosion and recovery each exceed 0.02.")
+    p.add_argument("--output", type=Path,
+                   default=Path("results/cagra_mirage_results.json"))
+    a = p.parse_args(argv)
+    positive = ("base", "chunks", "chunk_size", "dim", "queries", "degree", "ef",
+                "search_width", "steps", "query_batch", "distance_batch", "local_cap",
+                "candidate_cap", "refine_rounds", "repeats", "sweep_total",
+                "stream_eval_every")
+    for key in positive:
+        if getattr(a, key) <= 0:
+            p.error("--" + key.replace("_", "-") + " must be positive")
+    if not 10 <= a.degree < a.base:
+        p.error("require 10 <= degree < base for Recall@10")
+    if not 10 <= a.ef <= a.base or a.search_width > a.ef:
+        p.error("require 10 <= ef <= base and search-width <= ef")
+    if a.queries < 2 or a.dim < 2:
+        p.error("queries and dim must be >= 2")
+    if a.mode == "benchmark" and a.local_cap <= a.chunk_size:
+        p.error("local-cap must exceed chunk-size to include old neighbors")
+    if any(b <= 0 for b in a.sweep_chunk_sizes):
+        p.error("sweep-chunk-sizes must be positive")
+    if a.mode == "sweep" and max(a.sweep_chunk_sizes) > a.sweep_total:
+        p.error("sweep-total must be >= every sweep chunk size")
+    if a.verify_effect and a.mode != "benchmark":
+        p.error("verify-effect is supported only in benchmark mode")
+    if a.candidate_cap < a.degree:
+        p.error("candidate-cap must be >= degree")
+    if not a.alpha >= 1.0 or a.alpha == float("inf"):
+        p.error("alpha must be finite and >= 1")
+    if not 1 <= a.splice_intra < a.degree or a.splice_pool <= 0:
+        p.error("require 1 <= splice-intra < degree and positive splice-pool")
+    if not a.splice_alpha >= 1.0 or a.splice_alpha == float("inf"):
+        p.error("splice-alpha must be finite and >= 1")
+    if not 0 <= a.route <= a.degree:
+        p.error("require 0 <= route <= degree")
+    if a.route and not a.cohort_protect:
+        p.error("route requires --cohort-protect to define the old cohort")
+    return a
+
+
+
+def main(argv=None):
+    a = arguments(argv)
+    try:
+        import torch
+        from cagra_chunksplice.reporting import save_report
+        from cagra_chunksplice.selftest import self_test
+        from cagra_chunksplice.runners.benchmark import benchmark
+        from cagra_chunksplice.runners.sweep import run_sweep
+        from cagra_chunksplice.runners.stream import run_stream
+        if a.device == "cuda" and not torch.cuda.is_available():
+            raise RuntimeError("CUDA unavailable. Install a CUDA-enabled PyTorch build "
+                               "and compatible NVIDIA driver. --device cpu is debug only.")
+        device = torch.device(a.device)
+        with torch.inference_mode():
+            self_test(device)
+            if a.self_test_only:
+                return 0
+            if a.mode == "sweep":
+                report = run_sweep(a, device)
+            elif a.mode == "stream":
+                report = run_stream(a, device)
+            else:
+                report = benchmark(a, device)
+        save_report(a.output, report)
+        print("JSON: " + str(a.output.resolve()), flush=True)
+        if a.verify_effect and a.mode == "benchmark" and not report.get("effect_demonstrated", False):
+            print("Requested effect threshold not met; inspect measured results.",
+                  file=sys.stderr)
+            return 2
+        return 0
+    except (ImportError, OSError, RuntimeError, AssertionError, ValueError) as exc:
+        error = {
+            "schema_version": 2, "status": "runtime_error", "benchmark_completed": False,
+            "mode": a.mode,
+            "timestamp_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "parameters": {k: str(v) if isinstance(v, Path) else v
+                           for k, v in vars(a).items()},
+            "error_type": type(exc).__name__, "error": str(exc),
+            "python": sys.version, "requested_device": a.device,
+            "torch_distribution_versions": [],
+        }
+        error["torch_distribution_versions"] = [
+            d.version for d in importlib.metadata.distributions()
+            if d.metadata.get("Name", "").lower() == "torch"]
+        # Keep completed results intact; failures have a separate artifact.
+        path = a.output.with_name(a.output.stem + ".error.json")
+        from cagra_chunksplice.reporting import save_report
+        save_report(path, error)
+        print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
+        print("No benchmark results claimed. Diagnostic JSON: " + str(path.resolve()),
+              file=sys.stderr)
+        return 1
+

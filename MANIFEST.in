@@ -1,0 +1,4 @@
+include LICENSE CITATION.cff
+recursive-include docs *.md *.svg
+recursive-include experiments *.py *.md
+recursive-include tests *.py

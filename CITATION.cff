@@ -16,7 +16,7 @@ authors:
     email: "calisircihan21@gmail.com"
 license: MIT
 abstract: >-
-  A single-file PyTorch mechanism experiment comparing exact graph rebuilding,
+  A modular PyTorch mechanism experiment comparing exact graph rebuilding,
   snapshot insertion with degree-capped reverse edges, intra-chunk nearest-neighbor
   splicing, and optional bounded local relative-neighborhood refinement.
   Recorded artifacts comprise a controlled insertion-partition sweep and a
@@ -33,10 +33,15 @@ keywords:
   - reproducibility
 identifiers:
   - type: other
-    value: "sha256:84ebd6bb20d003f07d70b07d22d3bb63edd6bffee9b2fb2b4acd94ea811b2b0b"
+    value: "sha256:9b203948613f4734f65e906d36d11ec41b6210d7cabd119c79d7e9b09cf9053c"
     description: >-
-      SHA-256 of cagra_mirage_prototype.py recorded in sweep_results.json and
-      stream_results.json; not a Git commit or release identifier.
+      Historical single-file source digest in results/sweep_results.json;
+      not the refactored package digest or a Git commit identifier.
+  - type: other
+    value: "sha256:ff932e66b873a5ae62b718154ee050f763ca4f67d26407bc54eeec1feb3be8d8"
+    description: >-
+      Historical single-file source digest in results/stream_results.json;
+      not the refactored package digest or a Git commit identifier.
 references:
   - type: conference-paper
     title: "CAGRA: Highly Parallel Graph Construction and Approximate Nearest Neighbor Search for GPUs"

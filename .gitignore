@@ -6,3 +6,9 @@ _*.png
 _*.json
 *.error.json
 cagra_mirage_results.error.json
+.venv/
+.tmp/
+build/
+dist/
+*.egg-info/
+.coverage
