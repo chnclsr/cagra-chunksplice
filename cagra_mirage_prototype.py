@@ -8,6 +8,7 @@ Run:
     python cagra_mirage_prototype.py --workload iid --seed 17
     python cagra_mirage_prototype.py --device cpu --base 512 --chunks 2 --chunk-size 64
     python cagra_mirage_prototype.py --verify-effect
+    python cagra_mirage_prototype.py --alpha 1.2 --cohort-protect --route 4 --backfill
     python cagra_mirage_prototype.py --mode sweep --sweep-total 4096 --sweep-chunk-sizes 64 256 1024 2048
     python cagra_mirage_prototype.py --mode stream --chunks 50 --chunk-size 64 --stream-eval-every 10
 
@@ -69,6 +70,20 @@ def arguments():
     p.add_argument("--candidate-cap", type=int, default=64)
     p.add_argument("--hops", type=int, choices=(1, 2), default=2)
     p.add_argument("--refine-rounds", type=int, default=2)
+    p.add_argument("--alpha", type=float, default=1.0,
+                   help="LocalRNG occlusion slack (>=1); 1 is plain greedy RNG.")
+    p.add_argument("--route", type=int, default=0,
+                   help="LocalRNG slots reserved per row for old-cohort routing edges.")
+    p.add_argument("--cohort-protect", action="store_true",
+                   help="LocalRNG cohort-local occlusion: old/new nodes never occlude each other.")
+    p.add_argument("--backfill", action="store_true",
+                   help="LocalRNG fills empty slots with RNG-rejected candidates by distance.")
+    p.add_argument("--splice-intra", type=int, default=6,
+                   help="ChunkSplice slots per new row for same-chunk peers; rest stay new->old bridges.")
+    p.add_argument("--splice-pool", type=int, default=24,
+                   help="ChunkSplice nearest-peer pool that RNG picks the peer slots from.")
+    p.add_argument("--splice-alpha", type=float, default=1.0,
+                   help="ChunkSplice RNG occlusion slack among peers (>=1).")
     p.add_argument("--repeats", type=int, default=3)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--entry-policy", choices=("all", "old"), default="all",
@@ -113,6 +128,16 @@ def arguments():
         p.error("verify-effect is supported only in benchmark mode")
     if a.candidate_cap < a.degree:
         p.error("candidate-cap must be >= degree")
+    if not a.alpha >= 1.0 or a.alpha == float("inf"):
+        p.error("alpha must be finite and >= 1")
+    if not 1 <= a.splice_intra < a.degree or a.splice_pool <= 0:
+        p.error("require 1 <= splice-intra < degree and positive splice-pool")
+    if not a.splice_alpha >= 1.0 or a.splice_alpha == float("inf"):
+        p.error("splice-alpha must be finite and >= 1")
+    if not 0 <= a.route <= a.degree:
+        p.error("require 0 <= route <= degree")
+    if a.route and not a.cohort_protect:
+        p.error("route requires --cohort-protect to define the old cohort")
     return a
 
 
@@ -184,34 +209,76 @@ def naive_extend(x, old_graph, start, end, a):
     return graph
 
 
-def rng_prune(x, rows, candidates, degree):
+def rng_prune(x, rows, candidates, degree, alpha=1.0, route=0, cohort_split=None,
+              backfill=False):
     """Greedy relative-neighborhood heuristic, vectorized over source rows.
 
     Process q by increasing d(p,q). Reject q if an accepted r satisfies
-    max(d(p,r), d(r,q)) < d(p,q). Squared L2 preserves this strict inequality.
+    max(d(p,r), alpha*d(r,q)) < d(p,q), with unsquared L2 d. Squared distances
+    use alpha^2 and preserve this strict inequality; alpha=1 is plain greedy RNG,
+    alpha>1 (Vamana-style) occludes less and keeps longer edges.
     This is a candidate-restricted, directed greedy RNG, not the exact global RNG.
-    No kNN backfill: rejected edges stay rejected; sparse rows use -1 padding.
+
+    cohort_split: ids < split are the old cohort, ids >= split the new cohort.
+    If set, occlusion is cohort-local: r may reject q only if both share a cohort,
+    so a dense new chunk cannot prune old routing edges (and vice versa).
+    route: reserve up to this many slots for old-cohort candidates, preferring
+    RNG survivors, then rejected old candidates by distance. Requires cohort_split.
+    backfill: fill remaining empty slots with rejected candidates by distance.
+    Defaults (alpha=1, route=0, no split, no backfill) give the legacy result:
+    rejected edges stay rejected; sparse rows use -1 padding.
     """
+    if route > 0 and cohort_split is None:
+        raise ValueError("route reservation requires cohort_split")
     candidates = unique_candidates(candidates, rows)
     distances = candidate_distances(x[rows], x, candidates)
-    distances, order = distances.sort(dim=1)
+    # Stable: equal distances keep ascending-id order on every device.
+    distances, order = distances.sort(dim=1, stable=True)
     candidates = candidates.gather(1, order)
     vectors = x[candidates.clamp_min(0)]
     norm = vectors.square().sum(-1)
     between = (norm[:, :, None] + norm[:, None, :]
                - 2.0 * torch.bmm(vectors, vectors.transpose(1, 2))).clamp_min_(0)
-    blocked = ~distances.isfinite()
-    count = torch.zeros(len(rows), dtype=torch.long, device=x.device)
-    result = torch.full((len(rows), degree), -1, dtype=torch.long, device=x.device)
-    row_index = torch.arange(len(rows), device=x.device)
-    for j in range(candidates.shape[1]):
-        accept = ~blocked[:, j] & (count < degree)
-        result[row_index[accept], count[accept]] = candidates[accept, j]
+    between = between * (alpha * alpha)
+    valid = distances.isfinite()
+    if cohort_split is not None:
+        newer = candidates >= cohort_split
+        same_cohort = newer[:, :, None] == newer[:, None, :]
+    blocked = ~valid
+    width = candidates.shape[1]
+    kept = torch.zeros_like(valid)
+    # Uncapped pass: the first `degree` survivors equal those of a capped pass,
+    # because occlusion of q depends only on survivors closer than q.
+    for j in range(width):
+        accept = ~blocked[:, j]
+        kept[:, j] = accept
         # Both comparisons matter for equal-distance points.
         occludes = ((between[:, j, :] < distances)
                     & (distances[:, j, None] < distances))
+        if cohort_split is not None:
+            occludes &= same_cohort[:, j, :]
         blocked |= accept[:, None] & occludes
-        count += accept.long()
+    # Slot priority: reserved route edges, then RNG survivors, then backfill.
+    pos = torch.arange(width, device=x.device).expand_as(candidates)
+    absent = 3 * width
+    key = torch.full_like(pos, absent)
+    if backfill:
+        key = torch.where(valid, 2 * width + pos, key)
+    key = torch.where(kept, width + pos, key)
+    if route > 0:
+        old_valid = valid & (candidates < cohort_split)
+        old_key = torch.where(old_valid, (~kept).long() * width + pos,
+                              torch.full_like(pos, absent))
+        old_rank = old_key.argsort(dim=1).argsort(dim=1)
+        key = torch.where(old_valid & (old_rank < route), pos, key)
+    take = min(degree, width)
+    vals, chosen = key.topk(take, largest=False)
+    # Emit chosen edges in increasing distance; absent slots sort last.
+    chosen = chosen.masked_fill(vals >= absent, width).sort(dim=1).values
+    picked = candidates.gather(1, chosen.clamp_max(width - 1)).masked_fill(
+        chosen >= width, -1)
+    result = torch.full((len(rows), degree), -1, dtype=torch.long, device=x.device)
+    result[:, :take] = picked
     return result
 
 
@@ -262,9 +329,15 @@ def local_refine(x, graph, start, end, a):
             cap = min(a.candidate_cap, ids.shape[1])
             vals, order = d.topk(cap, largest=False)
             ids = ids.gather(1, order).masked_fill(~vals.isfinite(), -1)
-            graph[rows] = rng_prune(x, rows, ids, a.degree)
+            # Cohort boundary is this chunk: earlier chunks count as old cohort.
+            graph[rows] = rng_prune(x, rows, ids, a.degree, alpha=a.alpha,
+                                    route=a.route,
+                                    cohort_split=start if a.cohort_protect else None,
+                                    backfill=a.backfill)
     return graph, {"local_vertices": len(local), "local_old_vertices": len(old),
-                   "modified_row_limit": a.local_cap}
+                   "modified_row_limit": a.local_cap, "rng_alpha": a.alpha,
+                   "rng_route": a.route, "cohort_protect": a.cohort_protect,
+                   "rng_backfill": a.backfill}
 
 
 def refined_extend(x, old_graph, start, end, a):
@@ -273,10 +346,18 @@ def refined_extend(x, old_graph, start, end, a):
 
 
 def chunk_splice_extend(x, old_graph, start, end, a):
-    """Ablation: naive insertion plus exact intra-chunk kNN spliced into new rows.
+    """Naive insertion plus a small, diverse intra-chunk splice for new rows only.
 
-    Old rows are identical to naive_extend; only new->new edges are added, with
-    no RNG pruning and no old-neighborhood repair.
+    Dense chunks are sinkholes when peers take most of the degree budget: a beam
+    entering a microcluster spends its expansions on near-duplicate peers and has
+    few exits (Rebuild's exact kNN shows the extreme). So the splice is budgeted:
+    degree - splice_intra slots are reserved for new->old bridges (the Naive
+    links that keep base navigation), and only splice_intra slots go to peers.
+    One cohort-local rng_prune call over [Naive old links | intra kNN pool] picks
+    both: peers cannot occlude bridges, and RNG spreads the few peer slots across
+    directions instead of the nearest near-duplicates; backfill keeps rows full.
+    Work is one O(b^2 d) GEMM plus one width (degree + splice_pool) prune over
+    the chunk rows; old rows are exactly the Naive result.
     """
     graph = naive_extend(x, old_graph, start, end, a)
     b = end - start
@@ -284,13 +365,15 @@ def chunk_splice_extend(x, old_graph, start, end, a):
         return graph
     new = x[start:end]
     new_ids = torch.arange(start, end, device=x.device)
-    intra = exact_knn(new, new, min(a.degree, b - 1), a.distance_batch,
+    k_intra = min(a.splice_intra, b - 1)
+    pool = min(max(a.splice_pool, k_intra), b - 1)
+    intra = exact_knn(new, new, pool, a.distance_batch,
                       torch.arange(b, device=x.device)) + start
-    curr_links = graph[start:end]
-    candidates = unique_candidates(torch.cat([curr_links, intra], dim=1), new_ids)
-    distances = candidate_distances(new, x, candidates)
-    vals, pos = distances.topk(a.degree, largest=False)
-    graph[start:end] = candidates.gather(1, pos).masked_fill(~vals.isfinite(), -1)
+    candidates = torch.cat((graph[start:end], intra), dim=1)
+    route = a.degree - k_intra if start > 0 else 0
+    graph[start:end] = rng_prune(x, new_ids, candidates, a.degree,
+                                 alpha=a.splice_alpha, route=route,
+                                 cohort_split=start, backfill=True)
     return graph
 
 
@@ -558,13 +641,36 @@ def self_test(device):
     from types import SimpleNamespace
     a = SimpleNamespace(degree=2, distance_batch=4, candidate_cap=6, hops=2,
                         local_cap=10, refine_rounds=1, query_batch=4,
-                        ef=4, search_width=2, steps=6)
+                        ef=4, search_width=2, steps=6, alpha=1.0, route=0,
+                        cohort_protect=False, backfill=False,
+                        splice_intra=1, splice_pool=4, splice_alpha=1.0)
     x = torch.tensor([[0., 0.], [1., 0.], [2., 0.], [0., 1.],
                       [0.10, 0.02], [0.12, 0.03]], device=device)
     rows = torch.tensor([0], device=device)
     candidates = torch.tensor([[1, 2, 3, -1, 1]], device=device)
     r = rng_prune(x, rows, candidates, 3)
     assert 1 in r[0] and 3 in r[0] and 2 not in r[0], "RNG lune failure"
+    assert r[0].tolist() == [1, 3, -1], "legacy RNG must keep -1 padding"
+    # alpha=2: 4*d2(1,2)=4 is not < d2(0,2)=4, so 1 no longer occludes 2.
+    r = rng_prune(x, rows, candidates, 3, alpha=2.0)
+    assert sorted(r[0].tolist()) == [1, 2, 3], "alpha must relax occlusion"
+    # Row 0 sees new 4 first; plain RNG lets 4 occlude 5 and old 1, 2.
+    mixed_ids = torch.tensor([[4, 5, 1, 2]], device=device)
+    assert rng_prune(x, rows, mixed_ids, 3).tolist() == [[4, -1, -1]]
+    assert rng_prune(x, rows, mixed_ids, 3, backfill=True).tolist() == [[4, 5, 1]], \
+        "backfill must fill empty slots by distance"
+    # Cohort-local: new 4 cannot occlude old 1; old 1 still occludes old 2.
+    r = rng_prune(x, rows, mixed_ids, 3, cohort_split=4)
+    assert r.tolist() == [[4, 1, -1]], "cohort-local occlusion failure"
+    r = rng_prune(x, rows, mixed_ids, 3, route=2, cohort_split=4)
+    assert r.tolist() == [[4, 1, 2]], "route must backfill rejected old edges"
+    r = rng_prune(x, rows, mixed_ids, 2, route=2, cohort_split=4)
+    assert r.tolist() == [[1, 2]], "route slots must outrank new survivors"
+    try:
+        rng_prune(x, rows, mixed_ids, 2, route=1)
+        raise AssertionError("route without cohort_split must fail")
+    except ValueError:
+        pass
     initial = build_graph(x[:4], a)
     g = naive_extend(x, initial, 4, 6, a)
     validate_graph(g, len(x))
@@ -575,10 +681,21 @@ def self_test(device):
     validate_graph(fixed, len(x))
     assert intra_edges(fixed, 4, 2) > 0, "repair must restore chunk peers"
     assert not torch.equal(before, fixed) and info["local_vertices"] <= a.local_cap
+    # local_refine must forward the LocalRNG knobs into rng_prune.
+    knobs = SimpleNamespace(**{**vars(a), "alpha": 1.2, "route": 1,
+                               "cohort_protect": True, "backfill": True})
+    tuned, info = local_refine(x, before.clone(), 4, 6, knobs)
+    validate_graph(tuned, len(x))
+    assert (info["rng_alpha"], info["rng_route"], info["cohort_protect"],
+            info["rng_backfill"]) == (1.2, 1, True, True)
+    assert bool((tuned[4:6] >= 0).all()), "backfill must leave no empty slots"
+    assert bool((tuned[4:6] < 4).any(dim=1).all()), "route must keep an old edge"
     spliced = chunk_splice_extend(x, initial, 4, 6, a)
     validate_graph(spliced, len(x))
     assert torch.equal(spliced[:4], before[:4]), "splice must not touch old rows"
     assert 5 in spliced[4] and 4 in spliced[5], "splice must link chunk peers"
+    bridges = ((spliced[4:6] >= 0) & (spliced[4:6] < 4)).sum(dim=1)
+    assert bool((bridges >= a.degree - a.splice_intra).all()), "splice must keep bridges"
     single = chunk_splice_extend(x[:5], initial, 4, 5, a)
     assert torch.equal(single, naive_extend(x[:5], initial, 4, 5, a))
     all_ids = torch.arange(len(x), device=device).expand(len(x), -1)
