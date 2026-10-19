@@ -63,10 +63,10 @@ python -m venv .venv
 | Linux / macOS | `source .venv/bin/activate` |
 
 ```console
-python -m pip install -e .
+python -m pip install -e ".[test]"
 python -m cagra_chunksplice --help
 python -m cagra_chunksplice --device cpu --self-test-only
-python -m unittest discover -s tests -v
+python -m pytest -q
 ```
 
 The installed `cagra-chunksplice` command is equivalent to `python -m cagra_chunksplice`:
@@ -83,12 +83,13 @@ a small compatibility wrapper. Install the package for library imports.
 
 | Component | Purpose |
 | --- | --- |
-| Exact blocked kNN | Shared topology reference and ground truth without a full global distance matrix. |
-| Naive insertion | Snapshot new-to-old selection and capped reverse edges. |
+| Global rebuilds | Unpruned Rebuild-kNN and RNG-pruned Rebuild-RNG with reverse proposals; blocked exact candidate generation. |
+| Naive insertion | Exact or approximate beam selection from the preceding snapshot, with capped reverse edges. |
 | ChunkSplice | Peer slots, cohort-local RNG pruning and reserved old bridges. |
 | LocalRNG | Bounded one/two-hop repair, neighbor exchange and optional backfill. |
 | Beam search | Shared starts, beam capacity, expansion width and step budget. |
-| Evaluation | Recall by cohort, graph structure, stream reachability and orphan counts. |
+| Evaluation | Recall by source age, SCCs, hubness, reachability, bridge retention and edge lengths. |
+| Stress workloads | 100-500 epochs, high-dimensional Gaussian data, OOD probes and angular queries. |
 | Reporting | Synchronized samples, environment, parameters and package source hashes. |
 | Tests | Mechanisms, graph invariants, CLI/errors and end-to-end experiments. |
 
@@ -149,9 +150,19 @@ python experiments/stream.py --chunks 50 --chunk-size 64 --stream-eval-every 10 
 
 | Mode | Methods | Purpose |
 | --- | --- | --- |
-| `benchmark` | Rebuild, Naive, ChunkSplice, LocalRNG | Compare trajectories and query cohorts. |
-| `sweep` | Rebuild, Naive, ChunkSplice | Vary insertion partitions of one shared corpus. |
-| `stream` | Naive, ChunkSplice | Retain update timings and evaluate checkpoints. |
+| `benchmark` | Rebuild-kNN, Rebuild-RNG, Naive, ChunkSplice, LocalRNG | Compare trajectories and query cohorts. |
+| `sweep` | Rebuild-kNN, Rebuild-RNG, Naive, ChunkSplice | Vary insertion partitions of one shared corpus. |
+| `stream` | Naive, ChunkSplice; optional rebuilds | Retain update timings and evaluate checkpoints. |
+| `stress` | Rebuild-kNN, Rebuild-RNG, Naive, ChunkSplice | Evaluate long horizons; 100 epochs by default. |
+
+Use `--insertion-mode beam` to study accumulated candidate errors and
+`--workload high-lid --dim 128` for a high-dimensional Gaussian control.
+`--query-distribution ood` shifts queries away from the indexed distribution;
+`angular` normalizes both queries and data for cosine-equivalent rankings.
+[Scientific evaluation controls and metric definitions](experiments/README.md#long-horizon-and-failure-mode-evaluation)
+describe 100-500 epoch runs, shared controls, and diagnostic interpretation.
+New reports call the historical Rebuild method Rebuild-kNN; recorded results
+retain their original labels and values.
 
 Output defaults to `results/cagra_mirage_results.json` in the current working
 directory. Missing parents are created. Use a separate `--output` for new runs

@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import copy
 import torch
-from cagra_chunksplice.graph import build_graph
+from cagra_chunksplice.graph import build_graph, build_rng_graph
+from cagra_chunksplice.metrics import connectivity_metrics
 from cagra_chunksplice.algorithms.chunk_splice import chunk_splice_extend
 from cagra_chunksplice.evaluation import evaluate_graph
 from cagra_chunksplice.data import evaluation_set
@@ -21,7 +22,7 @@ from cagra_chunksplice.graph import validate_graph
 
 def run_sweep(a, device):
     """Vary only insertion partitioning of one fixed ordered corpus."""
-    names = ["Rebuild", "Naive", "ChunkSplice"]
+    names = ["Rebuild-kNN", "Rebuild-RNG", "Naive", "ChunkSplice"]
     report = experiment_report(a, device, "chunk_sweep", names)
     # Generate once with a fixed block size, never with the swept partition size.
     data_args = copy.copy(a)
@@ -79,8 +80,10 @@ def run_sweep(a, device):
                 for start in range(a.base, len(x), b):
                     end = min(start + b, len(x))
                     active = x[:end]
-                    if name == "Rebuild":
+                    if name == "Rebuild-kNN":
                         graph = build_graph(active, config)
+                    elif name == "Rebuild-RNG":
+                        graph = build_rng_graph(active, config)
                     elif name == "Naive":
                         graph = naive_extend(active, graph, start, end, config)
                     else:
@@ -100,6 +103,7 @@ def run_sweep(a, device):
                 **evaluate_graph(x, graph, queries, truth, latest, latest_truth,
                                  stage_entries, old_count, a),
                 **metrics,
+                **connectivity_metrics(graph, entries, a.base, latest_start),
             }
             record["intra_edges"] = record["intra_chunk_edges_all"]
             result["methods"][name] = record

@@ -10,7 +10,7 @@ def generate_data(a, device):
     base = torch.randn(a.base, a.dim, generator=gen)
     chunks, centers = [], []
     for _ in range(a.chunks):
-        if a.workload == "iid":
+        if a.workload in ("iid", "high-lid"):
             points = torch.randn(a.chunk_size, a.dim, generator=gen)
             query_centers = points
         else:
@@ -24,8 +24,12 @@ def generate_data(a, device):
                 a.chunk_size, a.dim, generator=gen)
         chunks.append(points)
         centers.append(query_centers)
-    x = torch.cat([base] + chunks).to(device)
-    return x, torch.cat(centers), gen
+    x = torch.cat([base] + chunks)
+    centers = torch.cat(centers)
+    if getattr(a, "query_distribution", "in-distribution") == "angular":
+        x = torch.nn.functional.normalize(x, dim=-1)
+        centers = torch.nn.functional.normalize(centers, dim=-1)
+    return x.to(device), centers, gen
 
 
 def query_set(x_cpu, new_centers, inserted, a, gen):
@@ -39,7 +43,7 @@ def query_set(x_cpu, new_centers, inserted, a, gen):
     else:
         fresh = new_centers[ids] + 0.10 * torch.randn(
             a.queries - n_old_q, a.dim, generator=gen)
-    return torch.cat((old, fresh)), n_old_q
+    return transform_queries(torch.cat((old, fresh)), a), n_old_q
 
 
 def evaluation_set(x_cpu, centers, inserted, latest_size, a, gen, device):
@@ -49,4 +53,44 @@ def evaluation_set(x_cpu, centers, inserted, latest_size, a, gen, device):
     ids = torch.randint(lo, inserted, (count,), generator=gen)
     noise = 0.08 if a.workload == "drift" else 0.10
     latest = centers[ids] + noise * torch.randn(count, a.dim, generator=gen)
-    return mixed.to(device), latest.to(device), old_count
+    return mixed.to(device), transform_queries(latest, a).to(device), old_count
+
+
+def transform_queries(queries, a):
+    """Translate OOD probes or normalize angular probes without changing truth.
+
+    Angular runs normalize both corpus and queries; squared L2 then yields the
+    same ranking as cosine distance. OOD translation uses a fixed coordinate
+    direction so its magnitude and interpretation remain reproducible.
+    """
+    distribution = getattr(a, "query_distribution", "in-distribution")
+    if distribution == "ood":
+        queries = queries.clone()
+        queries[:, 0] += getattr(a, "ood_shift", 4.0)
+    elif distribution == "angular":
+        queries = torch.nn.functional.normalize(queries, dim=-1)
+    return queries
+
+
+def age_query_sets(x_cpu, inserted, a):
+    """Source-age strata: base, early, middle, recent insertion thirds.
+
+    Strata describe source vectors, not necessarily the ages of exact neighbors.
+    Query generation has its own seed and cannot alter subsequent insertions.
+    """
+    epochs = inserted // a.chunk_size
+    boundaries = [0, epochs // 3, 2 * epochs // 3, epochs]
+    ranges = [("base", 0, a.base)]
+    for i, label in enumerate(("early", "middle", "recent")):
+        lo = a.base + boundaries[i] * a.chunk_size
+        hi = a.base + boundaries[i + 1] * a.chunk_size
+        if hi > lo:
+            ranges.append((label, lo, hi))
+    gen = torch.Generator().manual_seed(a.seed + 104729)
+    count = getattr(a, "age_queries", 32)
+    probes = {}
+    for label, lo, hi in ranges:
+        ids = torch.randint(lo, hi, (count,), generator=gen)
+        q = x_cpu[ids] + 0.1 * torch.randn(count, a.dim, generator=gen)
+        probes[label] = (transform_queries(q, a), [lo, hi])
+    return probes

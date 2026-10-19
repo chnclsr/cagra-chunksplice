@@ -8,7 +8,7 @@ from cagra_chunksplice.algorithms.pruning import rng_prune
 
 
 def chunk_splice_extend(x, old_graph, start, end, a):
-    """Naive insertion plus a small, diverse intra-chunk splice for new rows only.
+    """Exact or beam Naive insertion plus a diverse splice for new rows only.
 
     Dense chunks are sinkholes when peers take most of the degree budget: a beam
     entering a microcluster spends its expansions on near-duplicate peers and has
@@ -17,7 +17,7 @@ def chunk_splice_extend(x, old_graph, start, end, a):
     links that keep base navigation), and only splice_intra slots go to peers.
     One cohort-local rng_prune call over [Naive old links | intra kNN pool] picks
     both: peers cannot occlude bridges, and RNG spreads the few peer slots across
-    directions instead of the nearest near-duplicates; backfill keeps rows full.
+    directions instead of the nearest near-duplicates; backfill uses only available candidates; missing ANN bridges remain absent.
     Work is one O(b^2 d) GEMM plus one width (degree + splice_pool) prune over
     the chunk rows; old rows are exactly the Naive result.
     """

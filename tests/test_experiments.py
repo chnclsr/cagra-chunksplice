@@ -32,16 +32,29 @@ class ExperimentTests(unittest.TestCase):
 
     def test_benchmark(self):
         self.check_mode("benchmark", "benchmark", "stages",
-                        {"Rebuild", "Naive", "ChunkSplice", "LocalRNG"})
+                        {"Rebuild-kNN", "Rebuild-RNG", "Naive", "ChunkSplice", "LocalRNG"})
 
     def test_sweep_with_remainder(self):
         self.check_mode("sweep", "chunk_sweep", "results",
-                        {"Rebuild", "Naive", "ChunkSplice"},
+                        {"Rebuild-kNN", "Rebuild-RNG", "Naive", "ChunkSplice"},
                         ["--sweep-total", "9", "--sweep-chunk-sizes", "4", "5"])
 
     def test_stream_checkpoints(self):
         self.check_mode("stream", "streaming", "history", {"Naive", "ChunkSplice"},
                         ["--chunks", "3", "--stream-eval-every", "10"])
+
+    def test_stress_beam_angular_and_age_diagnostics(self):
+        self.check_mode("stress", "long_horizon_stress", "history",
+                        {"Rebuild-kNN", "Rebuild-RNG", "Naive", "ChunkSplice"},
+                        ["--chunks", "6", "--stream-eval-every", "3",
+                         "--insertion-mode", "beam", "--insertion-ef", "12",
+                         "--insertion-steps", "1", "--workload", "high-lid",
+                         "--query-distribution", "angular", "--age-queries", "2"])
+
+    def test_stream_ood_with_global_baselines(self):
+        self.check_mode("stream", "streaming", "history",
+                        {"Rebuild-kNN", "Rebuild-RNG", "Naive", "ChunkSplice"},
+                        ["--chunks", "3", "--stream-rebuild", "--query-distribution", "ood"])
 
     def check_mode(self, mode, experiment, rows_key, methods, extra=()):
         with tempfile.TemporaryDirectory() as directory:
@@ -59,10 +72,24 @@ class ExperimentTests(unittest.TestCase):
                     self.assertTrue(all(t >= 0 for t in metrics["update_samples_ms"]))
                     if "recall10" in metrics:
                         self.assertTrue(0 <= metrics["recall10"] <= 1)
+            for row in report[rows_key]:
+                for record in row["methods"].values():
+                    if "recall10" in record:
+                        self.assertGreater(record["scc_count"], 0)
+                        self.assertTrue(0 <= record["in_degree_gini"] <= 1)
+                        self.assertIn("mean_bridge_length", record)
+                        if mode in ("stream", "stress"):
+                            self.assertIn("age_stratified_recall10", record)
+                            self.assertIn("previous_checkpoint_edge_survival", record)
+                            self.assertIn("base", record["age_stratified_recall10"])
+            if mode == "stress":
+                self.assertEqual(len(report["history"]), 6)
+                self.assertEqual(set(report["history"][-1]["methods"]["Naive"]["age_stratified_recall10"]),
+                                 {"base", "early", "middle", "recent"})
             if mode == "sweep":
                 self.assertEqual([row["last_chunk_size"] for row in report["results"]], [1, 4])
                 self.assertTrue(report["controls"]["same_ordered_data_queries_truth_entries"])
-            if mode == "stream":
+            if mode == "stream" and "--stream-rebuild" not in extra:
                 self.assertEqual([row["evaluated"] for row in report["history"]], [True, False, True])
                 for row in report["history"]:
                     for name, alias in (("Naive", "naive"), ("ChunkSplice", "splice")):

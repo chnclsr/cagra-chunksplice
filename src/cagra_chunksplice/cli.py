@@ -19,8 +19,8 @@ def arguments(argv=None):
     p.add_argument("--device", choices=("cuda", "cpu"), default="cuda",
                    help="CPU is an explicit debug option; no silent CUDA fallback.")
     p.add_argument("--base", type=int, default=2048)
-    p.add_argument("--chunks", type=int, default=4,
-                   help="Number of updates in benchmark/stream mode.")
+    p.add_argument("--chunks", type=int, default=None,
+                   help="Number of updates; default 4, or 100 in stress mode.")
     p.add_argument("--chunk-size", type=int, default=256,
                    help="Update size; in sweep, fixed data-generation block size.")
     p.add_argument("--dim", type=int, default=32)
@@ -49,14 +49,31 @@ def arguments(argv=None):
                    help="ChunkSplice nearest-peer pool that RNG picks the peer slots from.")
     p.add_argument("--splice-alpha", type=float, default=1.0,
                    help="ChunkSplice RNG occlusion slack among peers (>=1).")
+    p.add_argument("--rebuild-pool", type=int, default=96,
+                   help="Global Rebuild-RNG exact candidate pool per row, >= degree.")
+    p.add_argument("--rebuild-alpha", type=float, default=1.0,
+                   help="Rebuild-RNG occlusion slack; no backfill.")
+    p.add_argument("--insertion-mode", choices=("exact", "beam"), default="exact",
+                   help="New-to-old candidate source; beam has no exact fallback.")
+    p.add_argument("--insertion-ef", type=int, default=48)
+    p.add_argument("--insertion-search-width", type=int, default=4)
+    p.add_argument("--insertion-steps", type=int, default=8)
+    p.add_argument("--query-distribution", choices=("in-distribution", "ood", "angular"),
+                   default="in-distribution")
+    p.add_argument("--ood-shift", type=float, default=4.0,
+                   help="OOD query translation magnitude along coordinate 0.")
+    p.add_argument("--age-queries", type=int, default=32,
+                   help="Queries per source-age stratum at stream checkpoints.")
+    p.add_argument("--stream-rebuild", action="store_true",
+                   help="Include both global baselines in stream mode (always on in stress mode).")
     p.add_argument("--repeats", type=int, default=3)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--entry-policy", choices=("all", "old"), default="all",
                    help="Common random starts over all active nodes; old is a stable-anchor control.")
-    p.add_argument("--workload", choices=("drift", "iid"), default="drift",
-                   help="drift: temporal dense microclusters; iid: Gaussian control.")
-    p.add_argument("--mode", choices=("benchmark", "sweep", "stream"), default="benchmark",
-                   help="benchmark: standard run; sweep: chunk-size sweep; stream: long-horizon streaming.")
+    p.add_argument("--workload", choices=("drift", "iid", "high-lid"), default="drift",
+                   help="drift: temporal dense microclusters; iid: Gaussian control; high-lid: full-dimensional isotropic Gaussian (use --dim 128 or higher).")
+    p.add_argument("--mode", choices=("benchmark", "sweep", "stream", "stress"), default="benchmark",
+                   help="benchmark: standard run; sweep: chunk-size sweep; stream: checkpointed streaming; stress: streaming with global baselines (default 100 epochs).")
     p.add_argument("--sweep-chunk-sizes", type=int, nargs="+",
                    default=[64, 256, 1024, 2048],
                    help="Sweep partitions of one shared corpus, in nodes per update.")
@@ -70,13 +87,25 @@ def arguments(argv=None):
     p.add_argument("--output", type=Path,
                    default=Path("results/cagra_mirage_results.json"))
     a = p.parse_args(argv)
+    if a.chunks is None:
+        a.chunks = 100 if a.mode == "stress" else 4
     positive = ("base", "chunks", "chunk_size", "dim", "queries", "degree", "ef",
                 "search_width", "steps", "query_batch", "distance_batch", "local_cap",
                 "candidate_cap", "refine_rounds", "repeats", "sweep_total",
-                "stream_eval_every")
+                "stream_eval_every", "rebuild_pool", "insertion_ef",
+                "insertion_search_width", "insertion_steps", "age_queries")
     for key in positive:
         if getattr(a, key) <= 0:
             p.error("--" + key.replace("_", "-") + " must be positive")
+    if a.rebuild_pool < a.degree:
+        p.error("rebuild-pool must be >= degree")
+    if a.insertion_mode == "beam" and (a.insertion_ef < a.degree or
+                                       a.insertion_search_width > min(a.insertion_ef, a.base)):
+        p.error("beam insertion requires insertion-ef >= degree and insertion-search-width <= min(insertion-ef, base)")
+    if not a.rebuild_alpha >= 1 or a.rebuild_alpha == float("inf"):
+        p.error("rebuild-alpha must be finite and >= 1")
+    if not 0 <= a.ood_shift < float("inf"):
+        p.error("ood-shift must be finite and nonnegative")
     if not 10 <= a.degree < a.base:
         p.error("require 10 <= degree < base for Recall@10")
     if not 10 <= a.ef <= a.base or a.search_width > a.ef:
@@ -126,7 +155,7 @@ def main(argv=None):
                 return 0
             if a.mode == "sweep":
                 report = run_sweep(a, device)
-            elif a.mode == "stream":
+            elif a.mode in ("stream", "stress"):
                 report = run_stream(a, device)
             else:
                 report = benchmark(a, device)

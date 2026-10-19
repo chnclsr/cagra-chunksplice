@@ -39,6 +39,22 @@ def experiment_report(a, device, experiment, methods):
         "parameters": {k: str(v) if isinstance(v, Path) else v
                        for k, v in vars(a).items()},
         "methods": methods,
+        "method_definitions": {
+            "Rebuild-kNN": "Global unpruned exact kNN, degree capped.",
+            "Rebuild-RNG": "Global exact kNN pool; greedy directed RNG; reverse proposals; RNG re-pruning; no backfill.",
+            "incremental_initialization": "Shared unpruned exact kNN base graph; update timings exclude initial build.",
+            "insertion_candidates": getattr(a, "insertion_mode", "exact"),
+            "insertion_entries": "Fixed seeded original-base anchors; no exact fallback in beam mode.",
+        },
+        "diagnostic_definitions": {
+            "scc": "Exact iterative Kosaraju; largest fraction over all active vertices.",
+            "hubness": "Population in-degree Gini and skewness, including zero-degree nodes.",
+            "bridge": "Directed edge across insertion epochs; original base is epoch 0.",
+            "edge_length": "Euclidean L2, including unit-normalized vectors in angular runs.",
+            "decay_reference": "Edges: initial base graph; bridges: first nonempty evaluated snapshot; previous checkpoint retained separately. No continuous-lifetime claim.",
+            "age_strata": "Query source: base and early/middle/recent insertion-epoch thirds; exact truth over all active nodes.",
+            "high_lid": "Isotropic Gaussian in all requested dimensions; intrinsic dimension is not empirically estimated.",
+        },
         "timing": {
             "statistic": "median wall milliseconds", "repeats": a.repeats,
             "warmup": "one full untimed call of each measured operation at its current shape",
@@ -50,6 +66,9 @@ def experiment_report(a, device, experiment, methods):
             "repeated_updates": "each repetition starts from the same immutable graph snapshot",
         },
         "query_cohorts": {
+            "distribution": getattr(a, "query_distribution", "in-distribution"),
+            "ood_shift": getattr(a, "ood_shift", 4.0),
+            "angular_normalization": "Both corpus and queries are unit normalized; L2 and cosine rankings agree.",
             "old": "noisy original base vectors",
             "inserted": "all inserted vectors/centers so far; new_query_recall10 is this cohort",
             "latest_chunk": "independent probes of newest chunk; separate from cumulative inserted",
