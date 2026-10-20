@@ -20,7 +20,8 @@ def native_report():
                          "effective_device": "cuda" if name == "cuVS-CAGRA" else "cpu", "ntotal": 40},
             "update_samples_ms": [1.0], "query_samples_ms": [4.0], "recall10_samples": [0.9],
         }
-    return {"parameters": {"external_backend": "native", "repeats": 1, "chunks": 1},
+    return {"parameters": {"external_backend": "native", "repeats": 1, "chunks": 1,
+                           "base": 32, "chunk_size": 8},
             "status": "ok", "benchmark_completed": True, "simulated": False,
             "gpu_execution_requested": True, "native_external_comparison_complete": True,
             "stages": [{"n": 40, "methods": copy.deepcopy(rows)}], "summary": rows,
@@ -63,6 +64,8 @@ class NativePromotionTests(unittest.TestCase):
             lambda r: r["stages"][0]["methods"]["MIRAGE"].update(query_samples_ms=[]),
             lambda r: r["stages"][0]["methods"]["MIRAGE"].update(recall10_samples=[float("nan")]),
             lambda r: r["stages"][0]["methods"]["MIRAGE"]["metadata"].update(ntotal=39),
+            lambda r: r["parameters"].update(chunk_size=9),
+            lambda r: r["parameters"].pop("base"),
         ]
         for mutate in mutations:
             report = native_report()
@@ -70,16 +73,66 @@ class NativePromotionTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 validate_native_report(report)
 
-    def test_every_sweep_configuration_is_checked(self):
+    def sweep_report(self):
         report = native_report()
-        report["parameters"]["external_sweep"] = True
-        point = {"method": "MIRAGE", **copy.deepcopy(report["summary"]["MIRAGE"]),
-                 "stages": [{"n": 40, "methods": {"MIRAGE": copy.deepcopy(report["summary"]["MIRAGE"])}}]}
-        report["curve_points"] = [point]
+        report["parameters"].update(
+            external_sweep=True, hnsw_m_values=[16], hnsw_ef_search_values=[32],
+            mirage_s_values=[16], mirage_r_values=[4], mirage_iter_values=[10],
+            cagra_itopk_values=[32], cagra_search_width_values=[1],
+            cagra_iterations_values=[8])
+        report["curve_points"] = [
+            {"method": name, **copy.deepcopy(report["summary"][name]),
+             "stages": [{"n": 40, "methods": {name: copy.deepcopy(
+                 report["stages"][0]["methods"][name])}}]}
+            for name in BACKENDS]
+        return report
+
+    def test_every_sweep_configuration_is_checked(self):
+        report = self.sweep_report()
         self.assertTrue(validate_native_report(report)["passed"])
-        point["stages"][0]["methods"]["MIRAGE"]["simulated"] = True
+        report["curve_points"][1]["stages"][0]["methods"]["MIRAGE"]["simulated"] = True
         with self.assertRaises(ValueError):
             validate_native_report(report)
+
+    def test_partial_sweep_grid_fails(self):
+        report = self.sweep_report()
+        report["curve_points"] = [p for p in report["curve_points"] if p["method"] != "cuVS-CAGRA"]
+        with self.assertRaisesRegex(ValueError, "cuVS-CAGRA: sweep measured 0 of 1"):
+            validate_native_report(report)
+        report = self.sweep_report()
+        report["parameters"]["mirage_r_values"] = [4, 8]
+        with self.assertRaisesRegex(ValueError, "MIRAGE: sweep measured 1 of 2"):
+            validate_native_report(report)
+
+    def test_cli_gate_failure_keeps_measurements_out_of_promoted_output(self):
+        import contextlib
+        import io
+        import json
+        import tempfile
+        from unittest.mock import patch
+        from cagra_chunksplice.cli import main
+        report = native_report()
+        report["summary"]["MIRAGE"]["simulated"] = True
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "external.json"
+            with patch("cagra_chunksplice.runners.external.benchmark_external",
+                       return_value=report), contextlib.redirect_stderr(io.StringIO()), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                code = main(["--mode", "external", "--device", "cpu",
+                             "--external-backend", "native", "--output", str(output)])
+            self.assertEqual(code, 1)
+            self.assertFalse(output.exists())
+            failure = json.loads(output.with_suffix(".error.json").read_text(encoding="utf-8"))
+            self.assertEqual(failure["status"], "promotion_gate_failed")
+            self.assertFalse(failure["promotion_gate"]["passed"])
+            self.assertIn("summary", failure)
+
+    def test_sweep_counts_match_parameter_grid(self):
+        from cagra_chunksplice.promotion import expected_sweep_counts
+        a = arguments(["--mode", "external", "--external-sweep"])
+        grid = parameter_grid(a)
+        for name, count in expected_sweep_counts(vars(a)).items():
+            self.assertEqual(count, sum(n == name for n, _ in grid))
 
 
 class FrontierTests(unittest.TestCase):

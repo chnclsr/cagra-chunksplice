@@ -122,7 +122,9 @@ bash scripts/run_native_validation.sh --dataset glove-100 --download-datasets --
 ```
 
 Select the CUDA major matching the environment, and pin upstream revisions for
-publication runs. These full-corpus sweeps require substantial compute and
+publication runs. The default `--faiss-opt-level generic` build omits SIMD
+kernels; pass `avx2` or `avx512` when the CPU supports it so CPU baselines are
+not handicapped. These full-corpus sweeps require substantial compute and
 memory; they are commands, not recorded results or runtime estimates. See
 [native setup, sweep controls and gate limitations](docs/external_baselines.md#native-setup-and-validation)
 before running.

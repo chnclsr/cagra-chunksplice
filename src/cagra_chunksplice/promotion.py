@@ -28,6 +28,22 @@ def _finite(value, low=0, high=math.inf, positive=False):
             and low <= value <= high and (not positive or value > 0))
 
 
+def expected_sweep_counts(parameters):
+    """Configured grid size per external method; mirrors pareto.parameter_grid."""
+    def size(*keys):
+        count = 1
+        for key in keys:
+            values = parameters.get(key)
+            if not isinstance(values, list) or not values:
+                return None
+            count *= len(values)
+        return count
+    return {"FAISS-HNSW": size("hnsw_m_values", "hnsw_ef_search_values"),
+            "MIRAGE": size("mirage_s_values", "mirage_r_values", "mirage_iter_values"),
+            "cuVS-CAGRA": size("cagra_itopk_values", "cagra_search_width_values",
+                               "cagra_iterations_values")}
+
+
 def validate_native_report(report):
     """Validate every measured row, not just a caller-provided completion flag."""
     errors = []
@@ -63,9 +79,21 @@ def validate_native_report(report):
                                            positive=key == "query_samples_ms") for v in values)):
                     errors.append(name + ": missing or invalid " + key)
 
+    base, chunk_size = parameters.get("base"), parameters.get("chunk_size")
+    if type(base) is not int or type(chunk_size) is not int or base <= 0 or chunk_size <= 0:
+        errors.append("positive base and chunk_size are required")
+        base = chunk_size = None
+
+    def check_prefixes(stage_list):
+        # Stage i must expose exactly base + i * chunk_size vectors.
+        if base is not None and [s.get("n") for s in stage_list] != [
+                base + i * chunk_size for i in range(1, len(stage_list) + 1)]:
+            errors.append("stage sizes do not match base + stage * chunk_size")
+
     stages = report.get("stages", [])
     if not stages or len(stages) != parameters.get("chunks"):
         errors.append("every update stage must be present")
+    check_prefixes(stages)
     for stage in stages:
         for name in EXTERNAL_METHODS:
             check_row(name, stage.get("methods", {}).get(name, {}), stage.get("n"))
@@ -80,8 +108,16 @@ def validate_native_report(report):
             check_row(name, point, samples=False)
             if len(point.get("stages", [])) != parameters.get("chunks"):
                 errors.append("every configuration needs its measured stages")
+            check_prefixes(point.get("stages", []))
             for stage in point.get("stages", []):
                 check_row(name, stage.get("methods", {}).get(name, {}), stage.get("n"))
+    if parameters.get("external_sweep"):
+        # A partial sweep cannot support a frontier over the configured grid.
+        for name, expected in expected_sweep_counts(parameters).items():
+            measured = sum(point.get("method") == name for point in points)
+            if expected is None or measured != expected:
+                errors.append(name + ": sweep measured " + str(measured) + " of "
+                              + str(expected) + " configured points")
     if errors:
         raise ValueError("Native Promotion Gate failed: " + "; ".join(dict.fromkeys(errors)))
     return {"passed": True, "scope": "native backend validation; not evidence of superiority",

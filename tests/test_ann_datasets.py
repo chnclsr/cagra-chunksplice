@@ -60,6 +60,17 @@ class DatasetTests(unittest.TestCase):
             with self.assertRaises(OSError):
                 load_external_data(a, torch.device("cpu"))
 
+    @unittest.skipIf(h5py is None, "requires datasets extra")
+    def test_undeclared_metric_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sift-128-euclidean.hdf5"
+            with h5py.File(path, "w") as source:
+                source["train"] = np.zeros((48, 128), dtype="float32")
+                source["test"] = np.zeros((6, 128), dtype="float32")
+            a = arguments([*SMALL, "--dataset", "sift1m", "--dataset-cache", directory])
+            with self.assertRaisesRegex(ValueError, "distance metric"):
+                load_external_data(a, torch.device("cpu"))
+
     def test_incomplete_download_is_not_published(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "dataset.hdf5"
@@ -70,6 +81,15 @@ class DatasetTests(unittest.TestCase):
                     _download("https://example.test/data", path, lambda p: None)
             self.assertFalse(path.exists())
             self.assertEqual(list(path.parent.glob("*.part")), [])
+
+    def test_http_protocol_errors_become_os_errors(self):
+        import http.client
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "dataset.hdf5"
+            with patch("urllib.request.urlopen", side_effect=http.client.IncompleteRead(b"")):
+                with self.assertRaises(OSError):
+                    _download("https://example.test/data", path, lambda p: None)
+            self.assertEqual(list(path.parent.glob("*")), [])
 
     def test_sweep_preserves_methods_samples_and_shared_truth(self):
         a = arguments([*SMALL, "--external-sweep", "--graph-ef-values", "12", "16",

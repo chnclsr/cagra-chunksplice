@@ -15,7 +15,10 @@ if __name__ == "__main__":
     parser.add_argument("report", type=Path)
     args = parser.parse_args()
     try:
-        result = promotion.validate_native_report(json.loads(args.report.read_text(encoding="utf-8")))
+        report = json.loads(args.report.read_text(encoding="utf-8"))
+        if not isinstance(report, dict):
+            raise ValueError("report must be a JSON object")
+        result = promotion.validate_native_report(report)
     except (OSError, ValueError) as exc:
         parser.exit(1, str(exc) + "\n")
     print(json.dumps(result))

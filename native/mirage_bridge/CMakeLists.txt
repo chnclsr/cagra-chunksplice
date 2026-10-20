@@ -6,7 +6,8 @@ if(NOT MIRAGE_SOURCE OR NOT MIRAGE_BUILD)
   message(FATAL_ERROR "Pass -DMIRAGE_SOURCE and -DMIRAGE_BUILD")
 endif()
 # Link only the CPU upstream target, never stock FAISS or a simulator.
-find_library(MIRAGE_FAISS NAMES faiss PATHS "${MIRAGE_BUILD}/faiss" NO_DEFAULT_PATH REQUIRED)
+set(MIRAGE_FAISS_NAME "faiss" CACHE STRING "Upstream library: faiss, faiss_avx2 or faiss_avx512")
+find_library(MIRAGE_FAISS NAMES "${MIRAGE_FAISS_NAME}" PATHS "${MIRAGE_BUILD}/faiss" NO_DEFAULT_PATH REQUIRED)
 find_path(MIRAGE_INCLUDE NAMES faiss/IndexMIRAGE.h faiss/IndexMirage.h
           PATHS "${MIRAGE_SOURCE}" "${MIRAGE_SOURCE}/faiss" NO_DEFAULT_PATH REQUIRED)
 find_package(OpenMP REQUIRED)

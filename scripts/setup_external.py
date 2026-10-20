@@ -75,15 +75,24 @@ def checkout(url, ref, destination, dry_run):
     return subprocess.check_output(["git", "-C", str(destination), "rev-parse", "HEAD"], text=True).strip()
 
 
-def configure_cpu(source, build, *, python_enabled, jobs, dry_run):
+# FAISS builds one library per SIMD level; the most specialized one is used.
+SIMD_SUFFIXES = {"generic": ("",), "avx2": ("", "_avx2"), "avx512": ("", "_avx2", "_avx512")}
+
+
+def faiss_library_name(opt_level):
+    return "faiss" + SIMD_SUFFIXES[opt_level][-1]
+
+
+def configure_cpu(source, build, *, python_enabled, jobs, dry_run, opt_level="generic"):
     run(["cmake", "-S", source, "-B", build,
          "-DFAISS_ENABLE_GPU=OFF", "-DFAISS_ENABLE_PYTHON=" + ("ON" if python_enabled else "OFF"),
-         "-DFAISS_OPT_LEVEL=generic", "-DBUILD_TESTING=OFF", "-DBUILD_SHARED_LIBS=ON",
+         "-DFAISS_OPT_LEVEL=" + opt_level, "-DBUILD_TESTING=OFF", "-DBUILD_SHARED_LIBS=ON",
          "-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_POSITION_INDEPENDENT_CODE=ON",
          "-DPython_EXECUTABLE=" + sys.executable, "-DPython3_EXECUTABLE=" + sys.executable],
         dry_run=dry_run)
-    run(["cmake", "--build", build, "--target", "swigfaiss" if python_enabled else "faiss",
-         "--parallel", jobs], dry_run=dry_run)
+    stem = "swigfaiss" if python_enabled else "faiss"
+    targets = [part for suffix in SIMD_SUFFIXES[opt_level] for part in ("--target", stem + suffix)]
+    run(["cmake", "--build", build, *targets, "--parallel", jobs], dry_run=dry_run)
 
 
 def smoke_native():
@@ -123,6 +132,9 @@ def main(argv=None):
     parser.add_argument("--cuvs-ref", default="branch-25.10")
     parser.add_argument("--source-cuvs", action="store_true",
                         help="Build cuVS/libcuvs Python components from upstream instead of wheels.")
+    parser.add_argument("--faiss-opt-level", choices=tuple(SIMD_SUFFIXES), default="generic",
+                        help="SIMD level for CPU FAISS and MIRAGE. generic is portable but slower; "
+                             "use the highest level the CPU supports for performance comparisons.")
     parser.add_argument("--jobs", type=int, default=min(os.cpu_count() or 1, 8))
     args = parser.parse_args(argv)
     environment = detect_environment()
@@ -156,12 +168,15 @@ def main(argv=None):
                            mirage_source, args.dry_run),
     }
     faiss_build, mirage_build = prefix / "build/faiss", prefix / "build/mirage"
-    configure_cpu(faiss_source, faiss_build, python_enabled=True, jobs=args.jobs, dry_run=args.dry_run)
+    configure_cpu(faiss_source, faiss_build, python_enabled=True, jobs=args.jobs,
+                  dry_run=args.dry_run, opt_level=args.faiss_opt_level)
     run([sys.executable, "-m", "pip", "install", "--no-build-isolation", faiss_build / "faiss/python"], dry_run=args.dry_run)
-    configure_cpu(mirage_source, mirage_build, python_enabled=False, jobs=args.jobs, dry_run=args.dry_run)
+    configure_cpu(mirage_source, mirage_build, python_enabled=False, jobs=args.jobs,
+                  dry_run=args.dry_run, opt_level=args.faiss_opt_level)
     bridge_build = prefix / "build/mirage_bridge"
     run(["cmake", "-S", ROOT / "native/mirage_bridge", "-B", bridge_build,
          "-DMIRAGE_SOURCE=" + str(mirage_source), "-DMIRAGE_BUILD=" + str(mirage_build),
+         "-DMIRAGE_FAISS_NAME=" + faiss_library_name(args.faiss_opt_level),
          "-DMIRAGE_REVISION=" + revisions["mirage"], "-DCMAKE_BUILD_TYPE=Release"], dry_run=args.dry_run)
     run(["cmake", "--build", bridge_build, "--parallel", args.jobs], dry_run=args.dry_run)
     if args.source_cuvs:

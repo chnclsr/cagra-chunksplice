@@ -30,9 +30,15 @@ below is satisfied.
 | Reproducibility and review | Archive successful native validation JSON, `.pareto.svg`, the build manifest, package/source provenance, hardware, thread settings, timing protocol and complete sweep grids. Review both dataset runs and frontier coverage before adding numbers to the primary tables. Preserve the CPU/GPU architectural distinction and PyTorch model labels; gate passage is not evidence of superiority. |
 
 The automated `promotion_gate.passed` result validates native backend
-provenance and measured-row integrity. It does **not** require real datasets,
-full-corpus coverage, an external sweep, or sufficient parameter-grid coverage.
+provenance and measured-row integrity, including stage sizes of
+`base + stage * chunk_size`. With `--external-sweep`, it also requires every
+configured grid point of each external method to be measured. It does **not**
+require real datasets, full-corpus coverage, an external sweep, or a grid wide
+enough to support a frontier claim.
 Its `academic_dataset` field only reports whether the dataset is nonsynthetic.
+If the gate fails, the measured report is written to `<output-stem>.error.json`
+with `status: "promotion_gate_failed"`, the promoted output path is not written,
+and the command exits with status 1.
 Thus a native synthetic smoke run can pass the automated check while remaining
 ineligible for the primary tables. The publication gate above is stricter and
 requires explicit review of both academic dataset sweeps.
@@ -142,6 +148,10 @@ source revisions and smoke-test status. For reproducible publication builds,
 pin `--faiss-ref` and `--mirage-ref` to exact commits and pin
 `--cuvs-version` to an exact wheel release, or `--cuvs-ref` for a source build.
 The default MIRAGE `main` and cuVS version wildcard are not immutable pins.
+CPU FAISS and MIRAGE default to `--faiss-opt-level generic`, a portable build
+without AVX2/AVX-512 kernels that understates CPU baseline throughput. For
+performance comparisons, pass the highest level the CPU supports
+(`avx2` or `avx512`); the manifest records the chosen level.
 A successful setup smoke test still leaves the full promotion gate pending.
 
 The validation wrapper sources `.external/env.sh` when present and forces
@@ -177,7 +187,10 @@ subset validation must not be presented as full-corpus evidence.
 Datasets are cached under `~/.cache/cagra-chunksplice/datasets`; override with
 `--dataset-cache`. Downloads use ANN-Benchmarks HDF5 files
 `sift-128-euclidean.hdf5` and `glove-100-angular.hdf5`. GloVe vectors and queries
-are unit-normalized. Missing data fails unless `--allow-synthetic-fallback`
+are unit-normalized. A subset is the first `base + chunks * chunk_size` train
+vectors in file order, inserted in a seeded permutation; it is a file prefix,
+not a uniform random sample. Queries are the first `--queries` test vectors.
+The file must declare its `distance` attribute. Missing data fails unless `--allow-synthetic-fallback`
 is explicitly supplied; do not enable that option for promotion runs. Check
 `dataset.synthetic: false`, the actual dataset name, hash and corpus counts
 in each report.
@@ -202,7 +215,9 @@ simulated results remain separate; Naive and ChunkSplice remain PyTorch models.
 ## Measurement protocol
 
 1. Generate one corpus and one mixed base/inserted query set per stage, with
-   exact Recall@10 truth over all visible vectors.
+   exact Recall@10 truth over all visible vectors. Academic datasets instead
+   reuse the same held-out test queries at every stage, with truth recomputed
+   over each visible prefix.
 2. Warm up with a full untimed replay. Build fresh indexes for each measured
    replay; append each batch once. Rotate method order by stage and replay.
 3. Synchronize PyTorch and native CuPy streams around wall-clock operations.
@@ -250,9 +265,9 @@ Accordingly, `native_external_comparison_complete: false`: these measurements
 describe the fallback implementations, not native HNSW, MIRAGE or CAGRA builds.
 A completed comparison using all three native external backends remains pending.
 
-The separate [GPU-run diagnostic](../results/external.error.json) and
-[CPU-run diagnostic](../results/external_cpu.error.json) preserve earlier
-`_ctypes` DLL import failures. Those diagnostics do not describe the successful
+Separate local GPU-run and CPU-run diagnostics (`results/external.error.json`
+and `results/external_cpu.error.json`, ignored by Git and not published)
+preserved earlier `_ctypes` DLL import failures. Those diagnostics do not describe the successful
 CUDA benchmark, and that benchmark alone does not establish a passing test suite.
 
 

@@ -222,10 +222,20 @@ def main(argv=None):
                 report = run_stream(a, device)
             else:
                 report = benchmark(a, device)
-        if a.mode == "external":
+        if a.mode == "external" and (a.external_backend == "native" or a.require_native_validation):
             from cagra_chunksplice.promotion import validate_native_report
-            if a.external_backend == "native" or a.require_native_validation:
+            try:
                 report["promotion_gate"] = validate_native_report(report)
+            except ValueError as exc:
+                # Keep the measurements for diagnosis, never at the promoted output path.
+                report["status"] = "promotion_gate_failed"
+                report["promotion_gate"] = {"passed": False, "error": str(exc)}
+                path = a.output.with_name(a.output.stem + ".error.json")
+                save_report(path, report)
+                print(f"ERROR: {exc}", file=sys.stderr)
+                print("Measured report retained as diagnostic JSON: " + str(path.resolve()),
+                      file=sys.stderr)
+                return 1
         save_report(a.output, report)
         if a.mode == "external" and a.external_sweep:
             from cagra_chunksplice.pareto import curves_svg

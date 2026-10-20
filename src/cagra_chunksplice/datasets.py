@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import http.client
 import os
 import tempfile
 import urllib.error
@@ -35,7 +36,10 @@ def _read(path, rows, queries, dimension, metric):
             raise ValueError("dataset matrices have unexpected dimensions")
         if len(train) < rows or len(test) < queries:
             raise ValueError("dataset is smaller than the requested corpus/query count")
-        actual_metric = source.attrs.get("distance", metric)
+        # ANN-Benchmarks files declare their metric; never assume it.
+        actual_metric = source.attrs.get("distance")
+        if actual_metric is None:
+            raise ValueError("dataset does not declare its distance metric")
         if isinstance(actual_metric, bytes):
             actual_metric = actual_metric.decode()
         if actual_metric != metric:
@@ -57,14 +61,18 @@ def _download(url, path, validate):
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temporary = tempfile.mkstemp(prefix=path.name + ".", suffix=".part", dir=path.parent)
     try:
-        with os.fdopen(fd, "wb") as target, urllib.request.urlopen(url, timeout=60) as response:
-            expected = response.headers.get("Content-Length")
-            received = 0
-            for block in iter(lambda: response.read(1024 * 1024), b""):
-                target.write(block)
-                received += len(block)
-            if expected is not None and received != int(expected):
-                raise OSError("incomplete dataset download")
+        try:
+            with os.fdopen(fd, "wb") as target, urllib.request.urlopen(url, timeout=60) as response:
+                expected = response.headers.get("Content-Length")
+                received = 0
+                for block in iter(lambda: response.read(1024 * 1024), b""):
+                    target.write(block)
+                    received += len(block)
+                if expected is not None and received != int(expected):
+                    raise OSError("incomplete dataset download")
+        except http.client.HTTPException as exc:
+            # e.g. IncompleteRead; report like other transfer failures.
+            raise OSError("dataset download failed: " + repr(exc)) from exc
         validate(Path(temporary))
         os.replace(temporary, path)
     finally:
@@ -74,8 +82,9 @@ def _download(url, path, validate):
 def load_external_data(a, device):
     """Return corpus, held-out queries (or None), synthetic centers/RNG, provenance.
 
-    Academic subsets use a deterministic seeded permutation of train rows.
-    Truth must be recomputed for each visible prefix; full-dataset neighbor IDs
+    Academic corpora are the first ``rows`` train vectors in file order,
+    inserted in a deterministic seeded permutation; subsets are therefore file
+    prefixes, not uniform random samples of the full train set. Truth must be recomputed for each visible prefix; full-dataset neighbor IDs
     in the HDF5 file cannot be reused after partitioning.
     """
     name = getattr(a, "dataset", "synthetic")
@@ -93,6 +102,8 @@ def load_external_data(a, device):
     validator = lambda candidate: _read(candidate, rows, a.queries, dimension, metric)
     reason = None
     if not path.exists() and a.download_datasets:
+        # Fail before a large download if the reader dependency is missing.
+        import h5py  # noqa: F401
         try:
             _download(url, path, validator)
         except (OSError, urllib.error.URLError) as exc:
@@ -110,6 +121,9 @@ def load_external_data(a, device):
             "available_train_rows": counts[0], "available_query_rows": counts[1],
             "full_academic_corpus": rows == full_rows and counts[0] == full_rows,
             "subset": rows != full_rows, "seed": a.seed,
+            "subset_selection": f"first {rows} train vectors in file order",
+            "insertion_order": "seeded permutation of the selected rows",
+            "queries_selected": f"first {a.queries} test vectors in file order",
             "metric": metric, "normalization": "unit_l2" if metric == "angular" else None,
             "query_protocol": "held-out test queries; exact truth over each visible prefix",
         }
