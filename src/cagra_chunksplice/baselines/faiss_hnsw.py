@@ -5,10 +5,10 @@ import importlib
 
 import torch
 
-from .base import IncrementalIndex, check_backend, unavailable
+from .base import CPUIndex, check_backend, unavailable
 
 
-class FaissHNSW(IncrementalIndex):
+class FaissHNSW(CPUIndex):
     """Use IndexHNSWFlat.add, or an exact PyTorch reference if absent.
 
     FAISS HNSW is a CPU index. CUDA requests retain native CPU HNSW and include
@@ -28,6 +28,7 @@ class FaissHNSW(IncrementalIndex):
     def _build(self, vectors):
         self.backend, self.simulated = "torch-exact", True
         self.index, self.fallback_reason, self.version = None, None, None
+        self.native_threads = None
         if self.requested_backend == "simulated":
             self.fallback_reason = "portable exact reference explicitly requested"
             return
@@ -37,6 +38,7 @@ class FaissHNSW(IncrementalIndex):
             index.hnsw.efConstruction = self.ef_construction
             index.hnsw.efSearch = self.ef_search
             index.add(vectors.cpu().numpy())
+            self.native_threads = faiss.omp_get_max_threads() if hasattr(faiss, "omp_get_max_threads") else None
         except (ImportError, ModuleNotFoundError) as exc:
             unavailable(self, self.requested_backend, exc)
             return
@@ -48,7 +50,7 @@ class FaissHNSW(IncrementalIndex):
         self.index = index
         self.backend, self.simulated = "faiss-hnsw-cpu", False
         self.version = getattr(faiss, "__version__", "unknown")
-        if self.device.type == "cuda":
+        if self.requested_device.type == "cuda":
             self.fallback_reason = "FAISS HNSW has no native GPU implementation; using CPU HNSW"
 
     def _add(self, vectors):
@@ -63,6 +65,6 @@ class FaissHNSW(IncrementalIndex):
 
     def metadata(self):
         return {**super().metadata(), "version": self.version,
-                "effective_device": "cpu" if self.index is not None else str(self.device),
+                "effective_device": "cpu",
                 "m": self.m, "ef_construction": self.ef_construction, "ef_search": self.ef_search,
                 "definition": "Native CPU HNSW or exact reference; fallback is not an HNSW performance model."}

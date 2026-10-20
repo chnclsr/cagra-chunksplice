@@ -1,7 +1,7 @@
 """CAGRA chunk-hole simulation and MIRAGE-inspired graph repair.
 
 Default modes are PyTorch mechanism studies. External mode adds optional native
-FAISS/cuVS adapters and explicitly labeled portable simulators.
+CPU FAISS-HNSW/MIRAGE and GPU cuVS adapters and explicitly labeled portable simulators.
 Use --device cpu for debugging, --mode sweep for controlled chunk partitions,
 and --mode stream for checkpointed updates. CUDA is the default device.
 """
@@ -77,8 +77,6 @@ def arguments(argv=None):
                    help="benchmark: standard run; sweep: chunk-size sweep; stream: checkpointed streaming; stress: streaming with global baselines (default 100 epochs); external: native/simulated index comparison.")
     p.add_argument("--external-backend", choices=("auto", "native", "simulated"), default="auto",
                    help="External indexes: auto selects native or labeled fallback; native requires libraries/hardware; simulated is portable.")
-    p.add_argument("--mirage-buffer-capacity", type=int, default=256,
-                   help="MIRAGE-inspired buffer size in vectors before synchronous merge.")
     p.add_argument("--hnsw-m", type=int, default=32)
     p.add_argument("--hnsw-ef-construction", type=int, default=80)
     p.add_argument("--sweep-chunk-sizes", type=int, nargs="+",
@@ -92,8 +90,11 @@ def arguments(argv=None):
     p.add_argument("--verify-effect", action="store_true",
                    help="Fail unless final recall erosion and recovery each exceed 0.02.")
     p.add_argument("--output", type=Path,
-                   default=Path("results/cagra_mirage_results.json"))
+                   default=None)
     a = p.parse_args(argv)
+    if a.output is None:
+        a.output = Path("results/external.json" if a.mode == "external"
+                        else "results/cagra_mirage_results.json")
     if a.chunks is None:
         a.chunks = 100 if a.mode == "stress" else 4
     positive = ("base", "chunks", "chunk_size", "dim", "queries", "degree", "ef",
@@ -101,7 +102,7 @@ def arguments(argv=None):
                 "candidate_cap", "refine_rounds", "repeats", "sweep_total",
                 "stream_eval_every", "rebuild_pool", "insertion_ef",
                 "insertion_search_width", "insertion_steps", "age_queries",
-                "mirage_buffer_capacity", "hnsw_m", "hnsw_ef_construction")
+                "hnsw_m", "hnsw_ef_construction")
     for key in positive:
         if getattr(a, key) <= 0:
             p.error("--" + key.replace("_", "-") + " must be positive")

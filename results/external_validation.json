@@ -1,0 +1,1200 @@
+{
+  "schema_version": 2,
+  "status": "ok",
+  "experiment": "external",
+  "implementation": "GPU dynamic graph insertion versus CPU multi-threaded hierarchical insertion",
+  "started_at_utc": "2026-10-20T08:03:44.336585+00:00",
+  "source_sha256": "ed4dcc6373ac07d9a2fc0087c41b5beee8fa703ec400304bac7ce02c0e884f59",
+  "source_sha256_scope": "sha256 of canonical JSON source_files_sha256 manifest",
+  "source_files_sha256": {
+    "__init__.py": "443f6a1d277c92f70c854584198c4a3ab9cee73cefd0c549c70d5ba830d302df",
+    "__main__.py": "119200e296c7c813ca764b2fe113ac417417688eff95d63d87bf3722aae9b4f1",
+    "algorithms/__init__.py": "792e0de9b487a76c7772bd01c16902b471b89912683288ddd0354e32823b4a5f",
+    "algorithms/chunk_splice.py": "7198a9270f6fdc6cdebbeb36e0301d5b05d3228b1ffd9858f092ca91155f02d8",
+    "algorithms/insertion.py": "bdfab11faa5454bd74dbb543979ec4d3e28900cfaaf5024b909ae800ed407cbf",
+    "algorithms/local_rng.py": "15e16d0d33b07b8cded44916b4c2817e0d148055fd0da3934052bcdc192515a0",
+    "algorithms/naive.py": "a4cd825a37766f92df2a5952faa31631519a44392eeb03189163d50974bc55d4",
+    "algorithms/pruning.py": "dc62fdf164ff986035ef833d735e0e27f66b21541f2db0d7afafd5fab1388668",
+    "baselines/__init__.py": "28a2f702fad00663ee22980aa18cc7694e62076702f2237e406824879cbe0817",
+    "baselines/base.py": "5dde3ac28498e428346571e30438a573ce1c1775ee5d67ce23d6c0ed20e6501a",
+    "baselines/cagra.py": "542c6b2288a879acfd9df9810125c0574b71c214201b6a9d6f8a717761da4aae",
+    "baselines/faiss_hnsw.py": "587002cfa2944873445d4ddaac94ada78accb5f79cb281c20c809d35d512e93b",
+    "baselines/mirage.py": "d3c6fc4e4041aba148a56c7cf043615b13414e523407efbf3cb0bb4efd2f00df",
+    "cli.py": "604709fa0394feccf82879d487a3323dea795e861623de112f1029739f219354",
+    "core.py": "b3bf1d694ab2b18f247c0af4b75721be84c7e7a1bdc2dbfc5aedd45ede7a8fa0",
+    "data.py": "16ec2cb48dc162b3cb9a93b0b5db06c3262786c0683bb8c6cb468e3f5a96cf98",
+    "evaluation.py": "28f00e6d6817ad124f60095247f886ccbe9b43d57052e35b4ba2ee1303cd057f",
+    "graph.py": "60975f0ca634f452bbacfc123c567b9af6af8c3e4cc590d2d8e648cc4018fb16",
+    "metrics.py": "4369c93b9bbb2e638a0c200b192d7a3e688c9109695d8c362f0237ec373b7f42",
+    "reporting.py": "bea903a0ad62931ffeffac69d0da13cdd7bc318e8c3c1548bae007921640b517",
+    "runners/__init__.py": "51f7f618774006cea9fe2f167ba2a68b3bf982803a23302ea1b700a697a92e2d",
+    "runners/benchmark.py": "1c61ad44e334984566ba43ef1b268d24f56f0a8b1dd67a096248a05dd1e94f44",
+    "runners/external.py": "9bb4f083bd3e6e08ccdda326ce6f88c86e79731698caf3068ca1ceaaadf5628b",
+    "runners/stream.py": "81bd488e76624704e9eaec0efb7c2574e843a562999dbd7038c235223cb5887d",
+    "runners/sweep.py": "694674ce7a6c0a5266627705358dc19055c9546606479054eb5e53238dec4d4a",
+    "search.py": "5c6176d85af29d6052c5894a3748b23a24ed757ba21dc6d54467637458d9cc52",
+    "selftest.py": "4c38893d7e7e2eb29d54628037a962870bb327a862116d26f461c84c12fafa6e",
+    "timing.py": "30848206cb2ede37940b7e208621f6187745f590c3e0bde61bc2deff4c12f43d"
+  },
+  "environment": {
+    "python": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 16:37:03) [MSC v.1929 64 bit (AMD64)]",
+    "torch": "2.11.0+cu128",
+    "torch_cuda": "12.8",
+    "device": "cuda",
+    "gpu": "NVIDIA GeForce RTX 4070 SUPER",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "cpu_threads": 20,
+    "interop_threads": 20,
+    "dtype": "float32",
+    "distance": "squared_l2",
+    "tf32_matmul": false,
+    "tf32_cudnn": false,
+    "deterministic_algorithms": false
+  },
+  "parameters": {
+    "device": "cuda",
+    "base": 2048,
+    "chunks": 4,
+    "chunk_size": 256,
+    "dim": 32,
+    "queries": 256,
+    "degree": 24,
+    "ef": 64,
+    "search_width": 4,
+    "steps": 16,
+    "query_batch": 64,
+    "distance_batch": 256,
+    "local_cap": 768,
+    "candidate_cap": 64,
+    "hops": 2,
+    "refine_rounds": 2,
+    "alpha": 1.0,
+    "route": 0,
+    "cohort_protect": false,
+    "backfill": false,
+    "splice_intra": 6,
+    "splice_pool": 24,
+    "splice_alpha": 1.0,
+    "rebuild_pool": 96,
+    "rebuild_alpha": 1.0,
+    "insertion_mode": "exact",
+    "insertion_ef": 48,
+    "insertion_search_width": 4,
+    "insertion_steps": 8,
+    "query_distribution": "in-distribution",
+    "ood_shift": 4.0,
+    "age_queries": 32,
+    "stream_rebuild": false,
+    "repeats": 1,
+    "seed": 42,
+    "entry_policy": "all",
+    "workload": "drift",
+    "mode": "external",
+    "external_backend": "auto",
+    "hnsw_m": 32,
+    "hnsw_ef_construction": 80,
+    "sweep_chunk_sizes": [
+      64,
+      256,
+      1024,
+      2048
+    ],
+    "sweep_total": 4096,
+    "stream_eval_every": 10,
+    "self_test_only": false,
+    "verify_effect": false,
+    "output": "results\\external_validation.json"
+  },
+  "methods": [
+    "Naive",
+    "ChunkSplice",
+    "FAISS-HNSW",
+    "cuVS-CAGRA",
+    "MIRAGE"
+  ],
+  "method_definitions": {
+    "Naive": "Existing PyTorch snapshot-insertion chunk-hole model.",
+    "ChunkSplice": "Existing PyTorch budgeted intra-chunk graph repair.",
+    "FAISS-HNSW": "Native CPU IndexHNSWFlat.add, or explicitly labeled exact fallback.",
+    "cuVS-CAGRA": "Native cuVS build/extend/search, or Naive chunk-hole simulator.",
+    "MIRAGE": "CPU-only multi-layer MIRAGE-ANNS: NN-Descent base and RNG-pruned add; or exact CPU reference."
+  },
+  "timing": {
+    "statistic": "median wall milliseconds across independent stream replays",
+    "repeats": 1,
+    "warmup": "one complete untimed stream replay using fresh indexes",
+    "repeated_updates": "each measured replay builds fresh indexes; each batch is added once",
+    "includes": "adapter validation, allocations, host/device transfers and insertion",
+    "excludes": "initial build, data/query generation, exact truth and metric computation",
+    "cuda_synchronization": "PyTorch and native CuPy streams before and after operations",
+    "ordering": "method order rotated by stage and replay",
+    "qps": "mixed-cohort batch size divided by median end-to-end query seconds",
+    "summary_update_ms": "median total update time per replay divided by update count",
+    "summary_recall_qps": "final-stage mixed recall and QPS"
+  },
+  "query_cohorts": {
+    "distribution": "in-distribution",
+    "ood_shift": 4.0,
+    "angular_normalization": "Both corpus and queries are unit normalized; L2 and cosine rankings agree.",
+    "old": "noisy original base vectors",
+    "inserted": "all inserted vectors/centers so far; new_query_recall10 is this cohort",
+    "latest_chunk": "not separately evaluated in external mode",
+    "old_count": 128,
+    "inserted_count": 128,
+    "latest_chunk_count": 0,
+    "drift_noise_std": 0.08,
+    "iid_noise_std": 0.1,
+    "comparison": "all methods share queries and exact truth at each stage",
+    "stage_zero": "not evaluated in external mode"
+  },
+  "scope": "Simulator latency measures this implementation only; it does not estimate external CPU or GPU performance. CPU debug runs do not measure GPU insertion. Native and simulated results must be distinguished.",
+  "architecture_groups": {
+    "cpu-hierarchical": [
+      "FAISS-HNSW",
+      "MIRAGE"
+    ],
+    "gpu-graph-insertion": [
+      "Naive",
+      "ChunkSplice",
+      "cuVS-CAGRA"
+    ]
+  },
+  "gpu_execution_requested": true,
+  "controls": {
+    "same_ordered_data_queries_truth": true,
+    "graph_entries": "seeded by active size; old policy uses fixed seeded base entries; native CPU/GPU indexes use their own traversal; exact fallbacks have no graph",
+    "optional_backend_policy": "auto"
+  },
+  "stages": [
+    {
+      "stage": 1,
+      "n": 2304,
+      "methods": {
+        "Naive": {
+          "update_samples_ms": [
+            5.144200000131605
+          ],
+          "query_samples_ms": [
+            90.4500999999982
+          ],
+          "recall10_samples": [
+            0.965624988079071
+          ],
+          "metadata": {
+            "backend": "torch-naive",
+            "simulated": true,
+            "requested_device": "cuda",
+            "effective_device": "cuda",
+            "fallback_reason": null,
+            "ntotal": 2304,
+            "architecture": "gpu-graph-insertion",
+            "implementation_architecture": "pytorch-graph-model"
+          },
+          "update_ms": 5.144200000131605,
+          "update_sample_summary": {
+            "min_ms": 5.144200000131605,
+            "max_ms": 5.144200000131605,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "query_ms": 90.4500999999982,
+          "recall10": 0.965624988079071,
+          "query_sample_summary": {
+            "min_ms": 90.4500999999982,
+            "max_ms": 90.4500999999982,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "backend": "torch-naive",
+          "simulated": true,
+          "qps": 2830.289850425871
+        },
+        "ChunkSplice": {
+          "update_samples_ms": [
+            9.103900000127396
+          ],
+          "query_samples_ms": [
+            56.1413000000357
+          ],
+          "recall10_samples": [
+            0.991406261920929
+          ],
+          "metadata": {
+            "backend": "torch-chunksplice",
+            "simulated": true,
+            "requested_device": "cuda",
+            "effective_device": "cuda",
+            "fallback_reason": null,
+            "ntotal": 2304,
+            "architecture": "gpu-graph-insertion",
+            "implementation_architecture": "pytorch-graph-model"
+          },
+          "update_ms": 9.103900000127396,
+          "update_sample_summary": {
+            "min_ms": 9.103900000127396,
+            "max_ms": 9.103900000127396,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "query_ms": 56.1413000000357,
+          "recall10": 0.991406261920929,
+          "query_sample_summary": {
+            "min_ms": 56.1413000000357,
+            "max_ms": 56.1413000000357,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "backend": "torch-chunksplice",
+          "simulated": true,
+          "qps": 4559.922908800423
+        },
+        "FAISS-HNSW": {
+          "update_samples_ms": [
+            0.1300000001265289
+          ],
+          "query_samples_ms": [
+            0.6900000000769069
+          ],
+          "recall10_samples": [
+            1.0
+          ],
+          "metadata": {
+            "backend": "torch-exact",
+            "simulated": true,
+            "requested_device": "cuda",
+            "effective_device": "cpu",
+            "fallback_reason": "ModuleNotFoundError: No module named 'faiss'",
+            "ntotal": 2304,
+            "architecture": "cpu-hierarchical",
+            "cpu_threads": 20,
+            "threading": "PyTorch CPU thread pool",
+            "implementation_architecture": "exact-reference",
+            "version": null,
+            "m": 32,
+            "ef_construction": 80,
+            "ef_search": 64,
+            "definition": "Native CPU HNSW or exact reference; fallback is not an HNSW performance model."
+          },
+          "update_ms": 0.1300000001265289,
+          "update_sample_summary": {
+            "min_ms": 0.1300000001265289,
+            "max_ms": 0.1300000001265289,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "query_ms": 0.6900000000769069,
+          "recall10": 1.0,
+          "query_sample_summary": {
+            "min_ms": 0.6900000000769069,
+            "max_ms": 0.6900000000769069,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "backend": "torch-exact",
+          "simulated": true,
+          "qps": 371014.4927122702
+        },
+        "cuVS-CAGRA": {
+          "update_samples_ms": [
+            4.573100000015984
+          ],
+          "query_samples_ms": [
+            49.03620000004594
+          ],
+          "recall10_samples": [
+            0.965624988079071
+          ],
+          "metadata": {
+            "backend": "torch-cagra-chunk-hole",
+            "simulated": true,
+            "requested_device": "cuda",
+            "effective_device": "cuda",
+            "fallback_reason": "ModuleNotFoundError: No module named 'cupy'",
+            "ntotal": 2304,
+            "version": null,
+            "architecture": "gpu-graph-insertion",
+            "implementation_architecture": "pytorch-graph-model",
+            "graph_degree": 24,
+            "max_chunk_size": 256,
+            "extend_api": null,
+            "definition": "Native cuVS extension or PyTorch snapshot-insertion mechanism simulator."
+          },
+          "update_ms": 4.573100000015984,
+          "update_sample_summary": {
+            "min_ms": 4.573100000015984,
+            "max_ms": 4.573100000015984,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "query_ms": 49.03620000004594,
+          "recall10": 0.965624988079071,
+          "query_sample_summary": {
+            "min_ms": 49.03620000004594,
+            "max_ms": 49.03620000004594,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "backend": "torch-cagra-chunk-hole",
+          "simulated": true,
+          "qps": 5220.63292016429
+        },
+        "MIRAGE": {
+          "update_samples_ms": [
+            0.14209999994818645
+          ],
+          "query_samples_ms": [
+            0.6733000000167522
+          ],
+          "recall10_samples": [
+            1.0
+          ],
+          "metadata": {
+            "backend": "torch-exact-cpu",
+            "simulated": true,
+            "requested_device": "cuda",
+            "effective_device": "cpu",
+            "fallback_reason": "ModuleNotFoundError: No module named 'faiss'",
+            "ntotal": 2304,
+            "architecture": "cpu-hierarchical",
+            "cpu_threads": 20,
+            "threading": "PyTorch CPU thread pool",
+            "implementation_architecture": "exact-reference",
+            "version": null,
+            "native_algorithm": {
+              "hierarchy": "multi-layer",
+              "base_construction": "NN-Descent with RNG pruning",
+              "incremental_update": "CPU multi-threaded add with RNG pruning",
+              "gpu_enabled": false
+            },
+            "native_parameters": null,
+            "reference": "https://doi.org/10.1145/3725325",
+            "definition": "Native CPU MIRAGE-ANNS or exact CPU reference; fallback does not implement MIRAGE hierarchy or model its performance."
+          },
+          "update_ms": 0.14209999994818645,
+          "update_sample_summary": {
+            "min_ms": 0.14209999994818645,
+            "max_ms": 0.14209999994818645,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "query_ms": 0.6733000000167522,
+          "recall10": 1.0,
+          "query_sample_summary": {
+            "min_ms": 0.6733000000167522,
+            "max_ms": 0.6733000000167522,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "backend": "torch-exact-cpu",
+          "simulated": true,
+          "qps": 380216.8424084814
+        }
+      }
+    },
+    {
+      "stage": 2,
+      "n": 2560,
+      "methods": {
+        "Naive": {
+          "update_samples_ms": [
+            11.005800000020827
+          ],
+          "query_samples_ms": [
+            68.37420000010752
+          ],
+          "recall10_samples": [
+            0.9410156607627869
+          ],
+          "metadata": {
+            "backend": "torch-naive",
+            "simulated": true,
+            "requested_device": "cuda",
+            "effective_device": "cuda",
+            "fallback_reason": null,
+            "ntotal": 2560,
+            "architecture": "gpu-graph-insertion",
+            "implementation_architecture": "pytorch-graph-model"
+          },
+          "update_ms": 11.005800000020827,
+          "update_sample_summary": {
+            "min_ms": 11.005800000020827,
+            "max_ms": 11.005800000020827,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "query_ms": 68.37420000010752,
+          "recall10": 0.9410156607627869,
+          "query_sample_summary": {
+            "min_ms": 68.37420000010752,
+            "max_ms": 68.37420000010752,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "backend": "torch-naive",
+          "simulated": true,
+          "qps": 3744.1023075896674
+        },
+        "ChunkSplice": {
+          "update_samples_ms": [
+            16.24800000013238
+          ],
+          "query_samples_ms": [
+            53.048799999942275
+          ],
+          "recall10_samples": [
+            0.992968738079071
+          ],
+          "metadata": {
+            "backend": "torch-chunksplice",
+            "simulated": true,
+            "requested_device": "cuda",
+            "effective_device": "cuda",
+            "fallback_reason": null,
+            "ntotal": 2560,
+            "architecture": "gpu-graph-insertion",
+            "implementation_architecture": "pytorch-graph-model"
+          },
+          "update_ms": 16.24800000013238,
+          "update_sample_summary": {
+            "min_ms": 16.24800000013238,
+            "max_ms": 16.24800000013238,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "query_ms": 53.048799999942275,
+          "recall10": 0.992968738079071,
+          "query_sample_summary": {
+            "min_ms": 53.048799999942275,
+            "max_ms": 53.048799999942275,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "backend": "torch-chunksplice",
+          "simulated": true,
+          "qps": 4825.745351455237
+        },
+        "FAISS-HNSW": {
+          "update_samples_ms": [
+            0.15389999998660642
+          ],
+          "query_samples_ms": [
+            0.749199999972916
+          ],
+          "recall10_samples": [
+            1.0
+          ],
+          "metadata": {
+            "backend": "torch-exact",
+            "simulated": true,
+            "requested_device": "cuda",
+            "effective_device": "cpu",
+            "fallback_reason": "ModuleNotFoundError: No module named 'faiss'",
+            "ntotal": 2560,
+            "architecture": "cpu-hierarchical",
+            "cpu_threads": 20,
+            "threading": "PyTorch CPU thread pool",
+            "implementation_architecture": "exact-reference",
+            "version": null,
+            "m": 32,
+            "ef_construction": 80,
+            "ef_search": 64,
+            "definition": "Native CPU HNSW or exact reference; fallback is not an HNSW performance model."
+          },
+          "update_ms": 0.15389999998660642,
+          "update_sample_summary": {
+            "min_ms": 0.15389999998660642,
+            "max_ms": 0.15389999998660642,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "query_ms": 0.749199999972916,
+          "recall10": 1.0,
+          "query_sample_summary": {
+            "min_ms": 0.749199999972916,
+            "max_ms": 0.749199999972916,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "backend": "torch-exact",
+          "simulated": true,
+          "qps": 341697.8110107509
+        },
+        "cuVS-CAGRA": {
+          "update_samples_ms": [
+            4.8311000000467175
+          ],
+          "query_samples_ms": [
+            71.0204000001795
+          ],
+          "recall10_samples": [
+            0.9410156607627869
+          ],
+          "metadata": {
+            "backend": "torch-cagra-chunk-hole",
+            "simulated": true,
+            "requested_device": "cuda",
+            "effective_device": "cuda",
+            "fallback_reason": "ModuleNotFoundError: No module named 'cupy'",
+            "ntotal": 2560,
+            "version": null,
+            "architecture": "gpu-graph-insertion",
+            "implementation_architecture": "pytorch-graph-model",
+            "graph_degree": 24,
+            "max_chunk_size": 256,
+            "extend_api": null,
+            "definition": "Native cuVS extension or PyTorch snapshot-insertion mechanism simulator."
+          },
+          "update_ms": 4.8311000000467175,
+          "update_sample_summary": {
+            "min_ms": 4.8311000000467175,
+            "max_ms": 4.8311000000467175,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "query_ms": 71.0204000001795,
+          "recall10": 0.9410156607627869,
+          "query_sample_summary": {
+            "min_ms": 71.0204000001795,
+            "max_ms": 71.0204000001795,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "backend": "torch-cagra-chunk-hole",
+          "simulated": true,
+          "qps": 3604.598115461937
+        },
+        "MIRAGE": {
+          "update_samples_ms": [
+            0.21629999992001103
+          ],
+          "query_samples_ms": [
+            1.029399999879388
+          ],
+          "recall10_samples": [
+            1.0
+          ],
+          "metadata": {
+            "backend": "torch-exact-cpu",
+            "simulated": true,
+            "requested_device": "cuda",
+            "effective_device": "cpu",
+            "fallback_reason": "ModuleNotFoundError: No module named 'faiss'",
+            "ntotal": 2560,
+            "architecture": "cpu-hierarchical",
+            "cpu_threads": 20,
+            "threading": "PyTorch CPU thread pool",
+            "implementation_architecture": "exact-reference",
+            "version": null,
+            "native_algorithm": {
+              "hierarchy": "multi-layer",
+              "base_construction": "NN-Descent with RNG pruning",
+              "incremental_update": "CPU multi-threaded add with RNG pruning",
+              "gpu_enabled": false
+            },
+            "native_parameters": null,
+            "reference": "https://doi.org/10.1145/3725325",
+            "definition": "Native CPU MIRAGE-ANNS or exact CPU reference; fallback does not implement MIRAGE hierarchy or model its performance."
+          },
+          "update_ms": 0.21629999992001103,
+          "update_sample_summary": {
+            "min_ms": 0.21629999992001103,
+            "max_ms": 0.21629999992001103,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "query_ms": 1.029399999879388,
+          "recall10": 1.0,
+          "query_sample_summary": {
+            "min_ms": 1.029399999879388,
+            "max_ms": 1.029399999879388,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "backend": "torch-exact-cpu",
+          "simulated": true,
+          "qps": 248688.55646978322
+        }
+      }
+    },
+    {
+      "stage": 3,
+      "n": 2816,
+      "methods": {
+        "Naive": {
+          "update_samples_ms": [
+            12.226699999928314
+          ],
+          "query_samples_ms": [
+            100.77759999990121
+          ],
+          "recall10_samples": [
+            0.918749988079071
+          ],
+          "metadata": {
+            "backend": "torch-naive",
+            "simulated": true,
+            "requested_device": "cuda",
+            "effective_device": "cuda",
+            "fallback_reason": null,
+            "ntotal": 2816,
+            "architecture": "gpu-graph-insertion",
+            "implementation_architecture": "pytorch-graph-model"
+          },
+          "update_ms": 12.226699999928314,
+          "update_sample_summary": {
+            "min_ms": 12.226699999928314,
+            "max_ms": 12.226699999928314,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "query_ms": 100.77759999990121,
+          "recall10": 0.918749988079071,
+          "query_sample_summary": {
+            "min_ms": 100.77759999990121,
+            "max_ms": 100.77759999990121,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "backend": "torch-naive",
+          "simulated": true,
+          "qps": 2540.247039027035
+        },
+        "ChunkSplice": {
+          "update_samples_ms": [
+            24.107899999989968
+          ],
+          "query_samples_ms": [
+            100.22749999984626
+          ],
+          "recall10_samples": [
+            0.984375
+          ],
+          "metadata": {
+            "backend": "torch-chunksplice",
+            "simulated": true,
+            "requested_device": "cuda",
+            "effective_device": "cuda",
+            "fallback_reason": null,
+            "ntotal": 2816,
+            "architecture": "gpu-graph-insertion",
+            "implementation_architecture": "pytorch-graph-model"
+          },
+          "update_ms": 24.107899999989968,
+          "update_sample_summary": {
+            "min_ms": 24.107899999989968,
+            "max_ms": 24.107899999989968,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "query_ms": 100.22749999984626,
+          "recall10": 0.984375,
+          "query_sample_summary": {
+            "min_ms": 100.22749999984626,
+            "max_ms": 100.22749999984626,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "backend": "torch-chunksplice",
+          "simulated": true,
+          "qps": 2554.189219529497
+        },
+        "FAISS-HNSW": {
+          "update_samples_ms": [
+            0.5326999998942483
+          ],
+          "query_samples_ms": [
+            1.7276000000947533
+          ],
+          "recall10_samples": [
+            1.0
+          ],
+          "metadata": {
+            "backend": "torch-exact",
+            "simulated": true,
+            "requested_device": "cuda",
+            "effective_device": "cpu",
+            "fallback_reason": "ModuleNotFoundError: No module named 'faiss'",
+            "ntotal": 2816,
+            "architecture": "cpu-hierarchical",
+            "cpu_threads": 20,
+            "threading": "PyTorch CPU thread pool",
+            "implementation_architecture": "exact-reference",
+            "version": null,
+            "m": 32,
+            "ef_construction": 80,
+            "ef_search": 64,
+            "definition": "Native CPU HNSW or exact reference; fallback is not an HNSW performance model."
+          },
+          "update_ms": 0.5326999998942483,
+          "update_sample_summary": {
+            "min_ms": 0.5326999998942483,
+            "max_ms": 0.5326999998942483,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "query_ms": 1.7276000000947533,
+          "recall10": 1.0,
+          "query_sample_summary": {
+            "min_ms": 1.7276000000947533,
+            "max_ms": 1.7276000000947533,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "backend": "torch-exact",
+          "simulated": true,
+          "qps": 148182.4496329933
+        },
+        "cuVS-CAGRA": {
+          "update_samples_ms": [
+            11.96780000009312
+          ],
+          "query_samples_ms": [
+            99.9735000000328
+          ],
+          "recall10_samples": [
+            0.918749988079071
+          ],
+          "metadata": {
+            "backend": "torch-cagra-chunk-hole",
+            "simulated": true,
+            "requested_device": "cuda",
+            "effective_device": "cuda",
+            "fallback_reason": "ModuleNotFoundError: No module named 'cupy'",
+            "ntotal": 2816,
+            "version": null,
+            "architecture": "gpu-graph-insertion",
+            "implementation_architecture": "pytorch-graph-model",
+            "graph_degree": 24,
+            "max_chunk_size": 256,
+            "extend_api": null,
+            "definition": "Native cuVS extension or PyTorch snapshot-insertion mechanism simulator."
+          },
+          "update_ms": 11.96780000009312,
+          "update_sample_summary": {
+            "min_ms": 11.96780000009312,
+            "max_ms": 11.96780000009312,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "query_ms": 99.9735000000328,
+          "recall10": 0.918749988079071,
+          "query_sample_summary": {
+            "min_ms": 99.9735000000328,
+            "max_ms": 99.9735000000328,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "backend": "torch-cagra-chunk-hole",
+          "simulated": true,
+          "qps": 2560.678579822813
+        },
+        "MIRAGE": {
+          "update_samples_ms": [
+            0.6634999999732827
+          ],
+          "query_samples_ms": [
+            1.9317000001137785
+          ],
+          "recall10_samples": [
+            1.0
+          ],
+          "metadata": {
+            "backend": "torch-exact-cpu",
+            "simulated": true,
+            "requested_device": "cuda",
+            "effective_device": "cpu",
+            "fallback_reason": "ModuleNotFoundError: No module named 'faiss'",
+            "ntotal": 2816,
+            "architecture": "cpu-hierarchical",
+            "cpu_threads": 20,
+            "threading": "PyTorch CPU thread pool",
+            "implementation_architecture": "exact-reference",
+            "version": null,
+            "native_algorithm": {
+              "hierarchy": "multi-layer",
+              "base_construction": "NN-Descent with RNG pruning",
+              "incremental_update": "CPU multi-threaded add with RNG pruning",
+              "gpu_enabled": false
+            },
+            "native_parameters": null,
+            "reference": "https://doi.org/10.1145/3725325",
+            "definition": "Native CPU MIRAGE-ANNS or exact CPU reference; fallback does not implement MIRAGE hierarchy or model its performance."
+          },
+          "update_ms": 0.6634999999732827,
+          "update_sample_summary": {
+            "min_ms": 0.6634999999732827,
+            "max_ms": 0.6634999999732827,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "query_ms": 1.9317000001137785,
+          "recall10": 1.0,
+          "query_sample_summary": {
+            "min_ms": 1.9317000001137785,
+            "max_ms": 1.9317000001137785,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "backend": "torch-exact-cpu",
+          "simulated": true,
+          "qps": 132525.75450894106
+        }
+      }
+    },
+    {
+      "stage": 4,
+      "n": 3072,
+      "methods": {
+        "Naive": {
+          "update_samples_ms": [
+            13.682500000186337
+          ],
+          "query_samples_ms": [
+            100.62010000001465
+          ],
+          "recall10_samples": [
+            0.9183593988418579
+          ],
+          "metadata": {
+            "backend": "torch-naive",
+            "simulated": true,
+            "requested_device": "cuda",
+            "effective_device": "cuda",
+            "fallback_reason": null,
+            "ntotal": 3072,
+            "architecture": "gpu-graph-insertion",
+            "implementation_architecture": "pytorch-graph-model"
+          },
+          "update_ms": 13.682500000186337,
+          "update_sample_summary": {
+            "min_ms": 13.682500000186337,
+            "max_ms": 13.682500000186337,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "query_ms": 100.62010000001465,
+          "recall10": 0.9183593988418579,
+          "query_sample_summary": {
+            "min_ms": 100.62010000001465,
+            "max_ms": 100.62010000001465,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "backend": "torch-naive",
+          "simulated": true,
+          "qps": 2544.2232714930988
+        },
+        "ChunkSplice": {
+          "update_samples_ms": [
+            25.248099999998885
+          ],
+          "query_samples_ms": [
+            100.3537999999935
+          ],
+          "recall10_samples": [
+            0.975390613079071
+          ],
+          "metadata": {
+            "backend": "torch-chunksplice",
+            "simulated": true,
+            "requested_device": "cuda",
+            "effective_device": "cuda",
+            "fallback_reason": null,
+            "ntotal": 3072,
+            "architecture": "gpu-graph-insertion",
+            "implementation_architecture": "pytorch-graph-model"
+          },
+          "update_ms": 25.248099999998885,
+          "update_sample_summary": {
+            "min_ms": 25.248099999998885,
+            "max_ms": 25.248099999998885,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "query_ms": 100.3537999999935,
+          "recall10": 0.975390613079071,
+          "query_sample_summary": {
+            "min_ms": 100.3537999999935,
+            "max_ms": 100.3537999999935,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "backend": "torch-chunksplice",
+          "simulated": true,
+          "qps": 2550.974651682513
+        },
+        "FAISS-HNSW": {
+          "update_samples_ms": [
+            0.5034000000705419
+          ],
+          "query_samples_ms": [
+            1.918100000011691
+          ],
+          "recall10_samples": [
+            1.0
+          ],
+          "metadata": {
+            "backend": "torch-exact",
+            "simulated": true,
+            "requested_device": "cuda",
+            "effective_device": "cpu",
+            "fallback_reason": "ModuleNotFoundError: No module named 'faiss'",
+            "ntotal": 3072,
+            "architecture": "cpu-hierarchical",
+            "cpu_threads": 20,
+            "threading": "PyTorch CPU thread pool",
+            "implementation_architecture": "exact-reference",
+            "version": null,
+            "m": 32,
+            "ef_construction": 80,
+            "ef_search": 64,
+            "definition": "Native CPU HNSW or exact reference; fallback is not an HNSW performance model."
+          },
+          "update_ms": 0.5034000000705419,
+          "update_sample_summary": {
+            "min_ms": 0.5034000000705419,
+            "max_ms": 0.5034000000705419,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "query_ms": 1.918100000011691,
+          "recall10": 1.0,
+          "query_sample_summary": {
+            "min_ms": 1.918100000011691,
+            "max_ms": 1.918100000011691,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "backend": "torch-exact",
+          "simulated": true,
+          "qps": 133465.40847632536
+        },
+        "cuVS-CAGRA": {
+          "update_samples_ms": [
+            13.413000000127795
+          ],
+          "query_samples_ms": [
+            101.45299999999224
+          ],
+          "recall10_samples": [
+            0.9183593988418579
+          ],
+          "metadata": {
+            "backend": "torch-cagra-chunk-hole",
+            "simulated": true,
+            "requested_device": "cuda",
+            "effective_device": "cuda",
+            "fallback_reason": "ModuleNotFoundError: No module named 'cupy'",
+            "ntotal": 3072,
+            "version": null,
+            "architecture": "gpu-graph-insertion",
+            "implementation_architecture": "pytorch-graph-model",
+            "graph_degree": 24,
+            "max_chunk_size": 256,
+            "extend_api": null,
+            "definition": "Native cuVS extension or PyTorch snapshot-insertion mechanism simulator."
+          },
+          "update_ms": 13.413000000127795,
+          "update_sample_summary": {
+            "min_ms": 13.413000000127795,
+            "max_ms": 13.413000000127795,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "query_ms": 101.45299999999224,
+          "recall10": 0.9183593988418579,
+          "query_sample_summary": {
+            "min_ms": 101.45299999999224,
+            "max_ms": 101.45299999999224,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "backend": "torch-cagra-chunk-hole",
+          "simulated": true,
+          "qps": 2523.3359289525156
+        },
+        "MIRAGE": {
+          "update_samples_ms": [
+            0.19940000015594705
+          ],
+          "query_samples_ms": [
+            1.7505000000710425
+          ],
+          "recall10_samples": [
+            1.0
+          ],
+          "metadata": {
+            "backend": "torch-exact-cpu",
+            "simulated": true,
+            "requested_device": "cuda",
+            "effective_device": "cpu",
+            "fallback_reason": "ModuleNotFoundError: No module named 'faiss'",
+            "ntotal": 3072,
+            "architecture": "cpu-hierarchical",
+            "cpu_threads": 20,
+            "threading": "PyTorch CPU thread pool",
+            "implementation_architecture": "exact-reference",
+            "version": null,
+            "native_algorithm": {
+              "hierarchy": "multi-layer",
+              "base_construction": "NN-Descent with RNG pruning",
+              "incremental_update": "CPU multi-threaded add with RNG pruning",
+              "gpu_enabled": false
+            },
+            "native_parameters": null,
+            "reference": "https://doi.org/10.1145/3725325",
+            "definition": "Native CPU MIRAGE-ANNS or exact CPU reference; fallback does not implement MIRAGE hierarchy or model its performance."
+          },
+          "update_ms": 0.19940000015594705,
+          "update_sample_summary": {
+            "min_ms": 0.19940000015594705,
+            "max_ms": 0.19940000015594705,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "query_ms": 1.7505000000710425,
+          "recall10": 1.0,
+          "query_sample_summary": {
+            "min_ms": 1.7505000000710425,
+            "max_ms": 1.7505000000710425,
+            "stdev_ms": 0.0,
+            "coefficient_of_variation": 0.0
+          },
+          "backend": "torch-exact-cpu",
+          "simulated": true,
+          "qps": 146243.9302996918
+        }
+      }
+    }
+  ],
+  "summary": {
+    "Naive": {
+      "update_ms": 10.51480000006677,
+      "total_update_samples_ms": [
+        42.05920000026708
+      ],
+      "recall10": 0.9183593988418579,
+      "qps": 2544.2232714930988,
+      "backend": "torch-naive",
+      "simulated": true,
+      "metadata": {
+        "backend": "torch-naive",
+        "simulated": true,
+        "requested_device": "cuda",
+        "effective_device": "cuda",
+        "fallback_reason": null,
+        "ntotal": 3072,
+        "architecture": "gpu-graph-insertion",
+        "implementation_architecture": "pytorch-graph-model"
+      }
+    },
+    "ChunkSplice": {
+      "update_ms": 18.676975000062157,
+      "total_update_samples_ms": [
+        74.70790000024863
+      ],
+      "recall10": 0.975390613079071,
+      "qps": 2550.974651682513,
+      "backend": "torch-chunksplice",
+      "simulated": true,
+      "metadata": {
+        "backend": "torch-chunksplice",
+        "simulated": true,
+        "requested_device": "cuda",
+        "effective_device": "cuda",
+        "fallback_reason": null,
+        "ntotal": 3072,
+        "architecture": "gpu-graph-insertion",
+        "implementation_architecture": "pytorch-graph-model"
+      }
+    },
+    "FAISS-HNSW": {
+      "update_ms": 0.3300000000194814,
+      "total_update_samples_ms": [
+        1.3200000000779255
+      ],
+      "recall10": 1.0,
+      "qps": 133465.40847632536,
+      "backend": "torch-exact",
+      "simulated": true,
+      "metadata": {
+        "backend": "torch-exact",
+        "simulated": true,
+        "requested_device": "cuda",
+        "effective_device": "cpu",
+        "fallback_reason": "ModuleNotFoundError: No module named 'faiss'",
+        "ntotal": 3072,
+        "architecture": "cpu-hierarchical",
+        "cpu_threads": 20,
+        "threading": "PyTorch CPU thread pool",
+        "implementation_architecture": "exact-reference",
+        "version": null,
+        "m": 32,
+        "ef_construction": 80,
+        "ef_search": 64,
+        "definition": "Native CPU HNSW or exact reference; fallback is not an HNSW performance model."
+      }
+    },
+    "cuVS-CAGRA": {
+      "update_ms": 8.696250000070904,
+      "total_update_samples_ms": [
+        34.78500000028362
+      ],
+      "recall10": 0.9183593988418579,
+      "qps": 2523.3359289525156,
+      "backend": "torch-cagra-chunk-hole",
+      "simulated": true,
+      "metadata": {
+        "backend": "torch-cagra-chunk-hole",
+        "simulated": true,
+        "requested_device": "cuda",
+        "effective_device": "cuda",
+        "fallback_reason": "ModuleNotFoundError: No module named 'cupy'",
+        "ntotal": 3072,
+        "version": null,
+        "architecture": "gpu-graph-insertion",
+        "implementation_architecture": "pytorch-graph-model",
+        "graph_degree": 24,
+        "max_chunk_size": 256,
+        "extend_api": null,
+        "definition": "Native cuVS extension or PyTorch snapshot-insertion mechanism simulator."
+      }
+    },
+    "MIRAGE": {
+      "update_ms": 0.3053249999993568,
+      "total_update_samples_ms": [
+        1.2212999999974272
+      ],
+      "recall10": 1.0,
+      "qps": 146243.9302996918,
+      "backend": "torch-exact-cpu",
+      "simulated": true,
+      "metadata": {
+        "backend": "torch-exact-cpu",
+        "simulated": true,
+        "requested_device": "cuda",
+        "effective_device": "cpu",
+        "fallback_reason": "ModuleNotFoundError: No module named 'faiss'",
+        "ntotal": 3072,
+        "architecture": "cpu-hierarchical",
+        "cpu_threads": 20,
+        "threading": "PyTorch CPU thread pool",
+        "implementation_architecture": "exact-reference",
+        "version": null,
+        "native_algorithm": {
+          "hierarchy": "multi-layer",
+          "base_construction": "NN-Descent with RNG pruning",
+          "incremental_update": "CPU multi-threaded add with RNG pruning",
+          "gpu_enabled": false
+        },
+        "native_parameters": null,
+        "reference": "https://doi.org/10.1145/3725325",
+        "definition": "Native CPU MIRAGE-ANNS or exact CPU reference; fallback does not implement MIRAGE hierarchy or model its performance."
+      }
+    }
+  },
+  "native_external_comparison_complete": false,
+  "benchmark_completed": true,
+  "completed_at_utc": "2026-10-20T08:03:46.630030+00:00",
+  "peak_cuda_allocated_mb": 21.443359375
+}

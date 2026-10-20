@@ -89,6 +89,36 @@ class IncrementalIndex:
                 "fallback_reason": self.fallback_reason, "ntotal": self.ntotal}
 
 
+class CPUIndex(IncrementalIndex):
+    """Keep index storage and computation on CPU, including exact fallbacks.
+
+    The requested device controls only result delivery. Host/device transfers
+    remain inside the public operations and are included in external timings.
+    """
+
+    architecture = "cpu-hierarchical"
+
+    def __init__(self, device="cpu"):
+        super().__init__("cpu")
+        self.requested_device = torch.device(device)
+        self.native_threads = None
+
+    def search(self, queries, k=10):
+        return super().search(queries, k).to(self.requested_device)
+
+    def synchronize(self):
+        synchronize(self.requested_device)
+
+    def metadata(self):
+        return {**super().metadata(),
+                "architecture": self.architecture,
+                "requested_device": str(self.requested_device),
+                "effective_device": "cpu",
+                "cpu_threads": self.native_threads if not self.simulated else torch.get_num_threads(),
+                "threading": "native OpenMP" if not self.simulated else "PyTorch CPU thread pool",
+                "implementation_architecture": "exact-reference" if self.simulated else "cpu-hierarchical"}
+
+
 class GraphBaseline(IncrementalIndex):
     """Adapter for the existing Naive and ChunkSplice mechanism models."""
 
@@ -125,6 +155,10 @@ class GraphBaseline(IncrementalIndex):
         result = torch.full((len(queries), k), -1, device=self.device, dtype=torch.long)
         result[:, :take] = found
         return result
+
+    def metadata(self):
+        return {**super().metadata(), "architecture": "gpu-graph-insertion",
+                "implementation_architecture": "pytorch-graph-model"}
 
 
 def check_backend(backend):

@@ -13,7 +13,7 @@ from unittest.mock import patch
 import torch
 
 from cagra_chunksplice.baselines import (
-    CuVSCAGRA, FaissHNSW, GraphBaseline, IncrementalIndex, MirageChunkSplice,
+    CuVSCAGRA, FaissHNSW, GraphBaseline, IncrementalIndex, CPUMirage,
 )
 from cagra_chunksplice.cli import arguments, main
 from cagra_chunksplice.runners.external import METHODS, benchmark_external
@@ -29,7 +29,7 @@ SMALL = ["--device", "cpu", "--base", "32", "--chunks", "3", "--chunk-size", "3"
          "--dim", "3", "--queries", "4", "--degree", "10", "--ef", "12",
          "--search-width", "2", "--steps", "2", "--query-batch", "4",
          "--distance-batch", "16", "--repeats", "2", "--splice-intra", "2",
-         "--mirage-buffer-capacity", "4", "--external-backend", "simulated"]
+         "--external-backend", "simulated"]
 
 
 def parameters():
@@ -46,7 +46,7 @@ class ExternalBaselineTests(unittest.TestCase):
     def indexes(self):
         return [GraphBaseline(self.a, "Naive"), GraphBaseline(self.a),
                 FaissHNSW(backend="simulated"), CuVSCAGRA(self.a, backend="simulated"),
-                MirageChunkSplice(self.a, buffer_capacity=4)]
+                CPUMirage(backend="simulated")]
 
     def test_common_contract_and_reset(self):
         for index in self.indexes():
@@ -91,11 +91,9 @@ class ExternalBaselineTests(unittest.TestCase):
                 for k in (0, -1, 1.5, True):
                     with self.assertRaises(ValueError):
                         index.search(self.new, k)
-        for factory in (FaissHNSW, lambda **kw: CuVSCAGRA(self.a, **kw)):
+        for factory in (FaissHNSW, lambda **kw: CuVSCAGRA(self.a, **kw), CPUMirage):
             with self.assertRaises(ValueError):
                 factory(backend="unknown")
-        with self.assertRaises(ValueError):
-            MirageChunkSplice(self.a, buffer_capacity=0)
 
     def test_missing_native_dependencies_and_strict_mode(self):
         with patch.dict(sys.modules, {"faiss": None}):
@@ -112,20 +110,85 @@ class ExternalBaselineTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "native backend unavailable"):
             CuVSCAGRA(self.a, backend="native").build(self.base)
 
-    def test_buffer_visibility_capacity_multiple_flushes_and_tail(self):
-        index = MirageChunkSplice(self.a, buffer_capacity=4).build(self.base)
-        index.add(self.new[:3])
-        self.assertEqual((index.buffer_size, index.main.ntotal, index.flush_count), (3, 32, 0))
-        self.assertTrue(torch.equal(index.search(self.new[:3], 1).flatten(), torch.arange(32, 35)))
-        index.add(self.new[3:])
-        self.assertEqual((index.buffer_size, index.main.ntotal, index.flush_count), (1, 40, 2))
-        self.assertEqual(index.search(self.new[-1:], 1).item(), 40)
-        index.flush().flush()
-        self.assertEqual((index.buffer_size, index.main.ntotal, index.flush_count), (0, 41, 3))
-        self.assertEqual(index.metadata()["merged_vectors"], 9)
-        self.assertTrue(torch.equal(index.data, index.main.data))
-        index.build(self.base)
-        self.assertEqual((index.buffer_size, index.flush_count, index.merged_vectors), (0, 0, 0))
+    def test_cpu_references_are_immediately_visible_without_buffer_or_gpu(self):
+        for factory in (FaissHNSW, CPUMirage):
+            index = factory(device="cuda", backend="simulated")
+            index.build(self.base).add(self.new)
+            self.assertEqual(index.data.device.type, "cpu")
+            self.assertEqual(index.device.type, "cpu")
+            meta = index.metadata()
+            self.assertEqual(meta["requested_device"], "cuda")
+            self.assertEqual(meta["effective_device"], "cpu")
+            self.assertEqual(meta["architecture"], "cpu-hierarchical")
+            self.assertEqual(meta["implementation_architecture"], "exact-reference")
+            self.assertEqual(meta["cpu_threads"], torch.get_num_threads())
+            # Exercise CPU computation without CUDA result delivery.
+            found = index._search(self.new, 1)
+            self.assertTrue(torch.equal(found.flatten(), torch.arange(32, 41)))
+            self.assertFalse(hasattr(index, "buffer"))
+        with patch.dict(sys.modules, {"faiss": SimpleNamespace()}):
+            index = CPUMirage().build(self.base).add(self.new)
+            self.assertIn("custom faiss.IndexMirage", index.metadata()["fallback_reason"])
+            self.assertIsNone(index.metadata()["native_parameters"])
+            self.assertFalse(index.metadata()["native_algorithm"]["gpu_enabled"])
+            with self.assertRaisesRegex(RuntimeError, "native backend unavailable"):
+                CPUMirage(backend="native").build(self.base)
+        with patch.dict(sys.modules, {"faiss": None}):
+            self.assertTrue(CPUMirage().build(self.base).metadata()["simulated"])
+            with self.assertRaisesRegex(RuntimeError, "native backend unavailable"):
+                CPUMirage(backend="native").build(self.base)
+
+    @unittest.skipUnless(torch.cuda.is_available(), "requires CUDA result delivery")
+    def test_cpu_reference_can_accept_cuda_inputs_and_return_cuda_ids(self):
+        for factory in (FaissHNSW, CPUMirage):
+            index = factory(device="cuda", backend="simulated")
+            index.build(self.base.cuda()).add(self.new.cuda())
+            found = index.search(self.new.cuda(), 1)
+            index.synchronize()
+            self.assertEqual(index.data.device.type, "cpu")
+            self.assertEqual(found.device.type, "cuda")
+            self.assertTrue(torch.equal(found.cpu().flatten(), torch.arange(32, 41)))
+
+    @unittest.skipIf(np is None, "native API mocks require optional NumPy")
+    def test_mirage_native_cpu_add_and_no_silent_runtime_fallback(self):
+        class FakeMirage:
+            def __init__(self, dimension):
+                self.mirage = SimpleNamespace(S=32, R=4, iter=15)
+                self.data = np.empty((0, dimension), dtype="float32")
+                self.add_sizes = []
+
+            def add(self, batch):
+                self.add_sizes.append(len(batch))
+                self.data = np.concatenate((self.data, batch))
+
+            def search(self, queries, k):
+                distances = ((queries[:, None] - self.data[None]) ** 2).sum(-1)
+                ids = distances.argsort(axis=1)[:, :k]
+                return np.take_along_axis(distances, ids, axis=1), ids
+
+        module = SimpleNamespace(IndexMirage=FakeMirage, __version__="mock",
+                                 omp_get_max_threads=lambda: 8)
+        with patch.dict(sys.modules, {"faiss": module}):
+            index = CPUMirage(backend="native").build(self.base).add(self.new[:3]).add(self.new[3:])
+            self.assertEqual(index.index.add_sizes, [32, 3, 6])
+            self.assertFalse(index.metadata()["simulated"])
+            self.assertEqual(index.metadata()["cpu_threads"], 8)
+            self.assertEqual(index.metadata()["backend"], "faiss-mirage-cpu")
+            self.assertEqual(index.metadata()["native_parameters"], {"S": 32, "R": 4, "iter": 15})
+            self.assertTrue(torch.equal(index.search(self.new, 1).flatten(), torch.arange(32, 41)))
+            index.build(self.base)
+            self.assertEqual(index.index.add_sizes, [32])
+            gpu = CPUMirage(device="cuda", backend="native").build(self.base)
+            self.assertEqual(gpu.data.device.type, "cpu")
+            self.assertEqual(gpu.metadata()["effective_device"], "cpu")
+            self.assertEqual(gpu.metadata()["requested_device"], "cuda")
+            with patch.object(index.index, "add", side_effect=RuntimeError("native add failed")):
+                with self.assertRaisesRegex(RuntimeError, "native add failed"):
+                    index.add(self.new)
+            self.assertFalse(index.metadata()["simulated"])
+            with patch.object(module, "IndexMirage", side_effect=RuntimeError("bad native build")):
+                with self.assertRaisesRegex(RuntimeError, "bad native build"):
+                    CPUMirage().build(self.base)
 
     @unittest.skipIf(np is None, "native API mocks require optional NumPy")
     def test_faiss_native_add_and_gpu_request_falls_back_to_cpu(self):
@@ -217,15 +280,26 @@ class ExternalRunnerTests(unittest.TestCase):
                 self.assertTrue(0 <= record["recall10"] <= 1)
                 self.assertGreater(record["qps"], 0)
                 self.assertEqual(record["recall10"], repeat["methods"][name]["recall10"])
-        summary = first["summary"]["MIRAGE-ChunkSplice"]
-        self.assertEqual(summary["metadata"]["buffer_size"], 0)
-        self.assertEqual(summary["metadata"]["merged_vectors"], 9)
-        self.assertEqual(summary["metadata"]["flush_count"], 3)
+        self.assertEqual(first["summary"]["MIRAGE"]["recall10"], 1.0)
+        self.assertEqual(first["architecture_groups"]["cpu-hierarchical"], ["FAISS-HNSW", "MIRAGE"])
+        self.assertEqual(first["architecture_groups"]["gpu-graph-insertion"],
+                         ["Naive", "ChunkSplice", "cuVS-CAGRA"])
+        self.assertFalse(first["gpu_execution_requested"])
+        self.assertFalse(first["native_external_comparison_complete"])
+        self.assertNotIn("final_buffer_drain", first["timing"])
+        for name, row in first["summary"].items():
+            meta = row["metadata"]
+            self.assertIn(name, first["architecture_groups"][meta["architecture"]])
+            if name in ("MIRAGE", "FAISS-HNSW"):
+                self.assertEqual(meta["effective_device"], "cpu")
+                self.assertEqual(meta["implementation_architecture"], "exact-reference")
         self.assertEqual(first["summary"]["FAISS-HNSW"]["recall10"], 1.0)
         json.dumps(first, allow_nan=False)
 
     def test_external_argument_validation(self):
-        for flag in ("--mirage-buffer-capacity", "--hnsw-m", "--hnsw-ef-construction"):
+        self.assertEqual(arguments(["--mode", "external"]).output, Path("results/external.json"))
+        self.assertEqual(arguments([]).output, Path("results/cagra_mirage_results.json"))
+        for flag in ("--hnsw-m", "--hnsw-ef-construction"):
             with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                 arguments(["--mode", "external", flag, "0"])
 

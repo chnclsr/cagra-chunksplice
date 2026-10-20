@@ -10,8 +10,9 @@
 | After: `ChunkSplice` | Add a small RNG-pruned peer budget while reserving old-cohort bridges. | For the same input graph and update, earlier rows equal the Naive result. Repeated trajectories can diverge. |
 
 The project separates reusable graph algorithms from experiment runners, tests
-and recorded results. It studies a topology mechanism; it does not implement or
-benchmark production cuVS/CAGRA, complete MIRAGE-ANNS, FAISS or DiskANN.
+and recorded results. Default modes study a topology mechanism. External mode
+adds optional native CPU FAISS-HNSW/MIRAGE and GPU cuVS-CAGRA adapters, with
+explicitly labeled fallbacks when native backends are unavailable.
 
 In the supplied sweep, ChunkSplice improves mixed and inserted-cohort recall
 relative to Naive while lowering original-base recall. Update cost is higher.
@@ -20,7 +21,7 @@ See [recorded results](docs/results.md) and
 
 ## Problem formulation: The intra-chunk disconnectivity crisis
 
-In modern GPU-accelerated vector search (such as cuVS/CAGRA, MIRAGE-ANNS, and DiskANN), proximity graph index construction requires establishing navigable, small-world topologies with bounded out-degrees (typically $R \in [16, 64]$). While static graph construction leverages global k-nearest-neighbor (kNN) descent followed by edge pruning (e.g., Relative Neighborhood Graph / RNG criteria), dynamic and streaming environments require incremental updates without full graph reconstruction.
+In graph-based vector search, including GPU cuVS/CAGRA and CPU MIRAGE-ANNS, proximity graph index construction requires establishing navigable, small-world topologies with bounded out-degrees (typically $R \in [16, 64]$). While static graph construction leverages global k-nearest-neighbor (kNN) descent followed by edge pruning (e.g., Relative Neighborhood Graph / RNG criteria), dynamic and streaming environments require incremental updates without full graph reconstruction.
 
 ### The Naive snapshot projection failure mode
 
@@ -38,7 +39,7 @@ While 2-hop traversals (`u -> w -> v` through an intermediate base node `w` in `
 
 ## Proposed solution: ChunkSplice degree budgeting
 
-**ChunkSplice** resolves the intra-chunk disconnectivity crisis through formal **degree-budget partitioning** and **cohort-local Relative Neighborhood Graph (RNG) pruning**, eliminating path fragmentation without sacrificing long-range navigability back to the base corpus.
+**ChunkSplice** addresses intra-chunk disconnectivity through **degree-budget partitioning** and **cohort-local Relative Neighborhood Graph (RNG) pruning**. In the recorded stream, it substantially reduces inserted-node disconnectivity while reserving outgoing bridges to the base corpus; full graph connectivity is not established.
 
 ```
 Total Out-Degree Budget: R (e.g., R = 24)
@@ -51,37 +52,39 @@ Total Out-Degree Budget: R (e.g., R = 24)
 ### Algorithmic mechanisms
 
 1. **Explicit Edge Partitioning**: For every vector `u` in `C_new`, out-degree capacity `R` is strictly split into:
-   - **Bridge edges (`R_bridge`)**: Outgoing connections directed into the existing base graph `V_old`, ensuring backward navigability and entry path retention.
+   - **Bridge edges (`R_bridge`)**: Outgoing connections directed into the existing base graph `V_old`, reserving capacity for routes to older vectors.
    - **Peer edges (`R_intra`)**: Dedicated intra-chunk connections connecting vectors within `C_new`.
 2. **Cohort-Local Relative Neighborhood Graph (RNG) Pruning**:
    - Intra-chunk edges are not chosen via naive kNN (which would create redundant, highly collinear cliques).
    - A candidate pool of size `R_pool` within `C_new` is evaluated against Gabriel / RNG criteria: an edge `(u, v)` is pruned if there exists a mutual neighbor `w` in `C_new` such that:
      `max(dist(u, w), dist(v, w)) < dist(u, v)`
    - This enforces diverse, angularly distributed intra-cluster paths while strictly bounding local clustering overhead to `O(|C_new|^2)` on GPU tensors.
-3. **Preserved Reverse Convergence**: Backward proposals from `C_new` into `V_old` remain intact, ensuring nodes in `V_old` can route queries forward into newly appended cohorts.
+3. **Preserved Reverse Proposals**: Reverse edge proposals to `V_old` use the same degree-capped process as Naive. Retained edges can provide entry routes into newly appended cohorts, but do not guarantee reachability of every new vector.
 
 ## Comparative analysis and related work
 
 | Paradigm | Update Mechanism | Update Latency | Mixed Recall@10 | Latest Chunk Recall | Navigability / Graph Health |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Full Rebuild (kNN / RNG)** | Global rebuild of $V_{old} \cup \mathcal{C}_{new}$ from scratch | Prohibitive ($O(N \cdot B)$ or $O(N \log N)$) | Moderate to High (0.65-0.90) | High (0.83-0.99) | Optimal, but computationally infeasible in real-time streams |
-| **Naive Attachment** | Snapshot $V_{old}$ lookup + capped reverse edges | Fast (low update ms) | Low (0.72-0.88) | Degraded (0.88-0.99) | Zero intra-chunk connectivity; intra-cluster search fails |
+| **Full Rebuild (kNN / RNG)** | Global rebuild of $V_{old} \cup \mathcal{C}_{new}$ from scratch | Workload-dependent; recorded Rebuild is faster at this scale | Moderate to High (0.65-0.90) | High (0.83-0.99) | Global reconstruction; connectivity depends on construction and pruning |
+| **Naive Attachment** | Snapshot $V_{old}$ lookup + capped reverse edges | Fast (low update ms) | Low (0.72-0.88) | Degraded (0.88-0.99) | Zero intra-chunk edges; clustered workloads can lose reachability |
 | **LocalRNG (Two-hop repair)** | Multi-hop neighbor exchange across entire active graph | Extremely Slow (up to 40x higher latency) | High | High | Excessive GPU global memory random accesses |
-| **ChunkSplice (Ours)** | Degree budget partitioning ($R_{bridge} + R_{intra}$) + cohort-local RNG | Minimal overhead ($<0.5$ ms/vector) | **High (0.93 - 0.97)** | **Near-Perfect (>0.997)** | Eliminates intra-chunk voids while maintaining $O(1)$ bridge routing |
+| **ChunkSplice (Ours)** | Degree budget partitioning ($R_{bridge} + R_{intra}$) + cohort-local RNG | Recorded sweep: $<0.5$ ms/vector; higher update cost than Naive | 0.734-0.934 in the sweep; 0.970 at stream end | 0.992-0.998 shared-tail sweep recall; 0.999 at stream end | Stream-end inserted reachability 0.998046875; residual unreachable nodes remain |
 
 ### Key trade-offs
 
-- **cuVS / CAGRA `extend` & MIRAGE-ANNS**: CAGRA achieves ultra-high QPS via 1-hop / 2-hop traversals over small-degree graphs. Naive extension degrades because CAGRA's fixed out-degree layout cannot accommodate new intra-cluster edges without restructuring. ChunkSplice provides the exact structural primitive needed to maintain CAGRA traversal guarantees under incremental ingestion.
-- **HNSW / Vamana**: Hierarchical and Vamana graphs use global RNG-style edge pruning during sequential insertion, which requires CPU-bound serial priority-queue traversals. ChunkSplice executes intra-chunk pruning as a batched, parallel CUDA matrix operation.
+- **GPU graph insertion (cuVS-CAGRA, Naive, ChunkSplice)**: cuVS provides native CUDA graph extension. Naive and ChunkSplice are PyTorch mechanism models; ChunkSplice adds batched, cohort-local RNG peer pruning. CPU debugging measures the models on CPU.
+- **CPU hierarchical insertion (FAISS-HNSW, MIRAGE)**: Both use multi-threaded CPU implementations. MIRAGE-ANNS is entirely CPU: C++ on FAISS, multi-layer hierarchy, NN-Descent base construction, and RNG pruning during incremental add. The official build disables GPU support with `-DFAISS_ENABLE_GPU=OFF`. It is neither a GPU method nor a buffered ChunkSplice variant. See the [official MIRAGE repository](https://github.com/dsg-uwaterloo/mirage) and [SIGMOD 2025 paper, PACMMOD 3(3), Art. 188](https://doi.org/10.1145/3725325).
+- **Comparison scope**: External mode compares GPU dynamic graph updates with CPU multi-threaded insertion on shared data and queries. Exact CPU fallbacks provide a functional reference and cannot establish native MIRAGE or HNSW performance.
+
 
 ## Key scientific contributions
 
-1. **Formal Formulation of the Intra-Chunk Disconnectivity Pathology**: We identify and formalize the structural failure mode of snapshot projection in incremental proximity graphs, proving that the absence of intra-chunk edges is the primary bottleneck in dynamic vector indexing.
-2. **Degree-Budget Partitioning Architecture**: We introduce a deterministic degree split ($R_{bridge}, R_{intra}$) that guarantees bidirectional navigability between historical snapshots and new cohorts.
+1. **Characterization of Intra-Chunk Disconnectivity**: The controlled snapshot-projection experiments support missing intra-chunk edges as a contributor to recall loss in the tested clustered workloads; they do not establish it as the primary bottleneck across dynamic vector indexes.
+2. **Degree-Budget Partitioning Architecture**: A degree split ($R_{bridge}, R_{intra}$) reserves old-cohort bridges and adds peer connections. In the recorded stream, final inserted-cohort reachability is **0.998046875**, compared with **0.865234375** for Naive. This is an empirical improvement, not a guarantee of bidirectional connectivity.
 3. **Cohort-Local Parallel RNG Pruning**: A GPU-native batched pruning algorithm that selects angularly diversified peer edges without requiring global graph traversals.
-4. **Empirical Superiority Across Partitions**: Under controlled experiments on an NVIDIA RTX 4070 SUPER, ChunkSplice:
-   - Elevates Mixed Recall@10 from **0.727 to 0.734** on micro-chunks ($b=64$) and from **0.888 to 0.925-0.934** on larger chunks ($b \ge 256$).
-   - Maintains **>0.997** recall on the newly inserted cohort and reaches **~4,920 QPS** in continuous streaming.
+4. **Observed Recall and Connectivity Trade-offs**: In the supplied experiments on an NVIDIA RTX 4070 SUPER, ChunkSplice:
+   - Improves mixed and inserted-cohort recall in all four sweep partitions, with lower original-base recall and higher update cost than Naive (see the tables below).
+   - Reaches **1.0** inserted-cohort recall and **4919.841181206764 QPS** at the final checkpoint of the four-update stream. Inserted orphans fall from **138** with Naive to **2** with ChunkSplice, substantially suppressing disconnectivity in this workload. Batch updates take **4.725700000562938-6.062199998268625 ms** for 256 vectors, so update cost is sub-millisecond **per vector**, not per batch.
 5. **Open-Source Reproducible Diagnostic Framework**: Implementation of advanced graph health metrics including Tarjan Strongly Connected Components (SCC), in-degree Gini/hubness analysis, and long-horizon edge decay tracking.
 
 ## Key experimental results
@@ -158,12 +161,14 @@ a small compatibility wrapper. Install the package for library imports.
 | Stress workloads | 100-500 epochs, high-dimensional Gaussian data, OOD probes and angular queries. |
 | Reporting | Synchronized samples, environment, parameters and package source hashes. |
 | Tests | Mechanisms, graph invariants, CLI/errors and end-to-end experiments. |
+| External baselines | CPU FAISS-HNSW/MIRAGE versus GPU cuVS-CAGRA and PyTorch Naive/ChunkSplice; explicit backend/device provenance. |
 
 ## Repository layout
 
 ```text
 .
 ├── src/cagra_chunksplice/
+│   ├── baselines/        # CPU hierarchical and GPU graph insertion adapters
 │   ├── algorithms/       # Naive, ChunkSplice, LocalRNG and RNG pruning
 │   ├── core.py           # Distances, exact kNN and candidates
 │   ├── graph.py          # Construction and adjacency invariants
@@ -220,6 +225,7 @@ python experiments/stream.py --chunks 50 --chunk-size 64 --stream-eval-every 10 
 | `sweep` | Rebuild-kNN, Rebuild-RNG, Naive, ChunkSplice | Vary insertion partitions of one shared corpus. |
 | `stream` | Naive, ChunkSplice; optional rebuilds | Retain update timings and evaluate checkpoints. |
 | `stress` | Rebuild-kNN, Rebuild-RNG, Naive, ChunkSplice | Evaluate long horizons; 100 epochs by default. |
+| `external` | CPU FAISS-HNSW, MIRAGE; GPU cuVS-CAGRA, Naive, ChunkSplice | Compare architectures with native/fallback labels. |
 
 Use `--insertion-mode beam` to study accumulated candidate errors and
 `--workload high-lid --dim 128` for a high-dimensional Gaussian control.
@@ -230,8 +236,26 @@ describe 100-500 epoch runs, shared controls, and diagnostic interpretation.
 New reports call the historical Rebuild method Rebuild-kNN; recorded results
 retain their original labels and values.
 
+For the external comparison (native backends selected when available):
+
+```console
+python experiments/benchmark_external.py --device cuda --external-backend auto --base 512 --chunks 3 --chunk-size 64 --dim 32 --queries 64 --output results/external.json
+```
+
+Use `--device cpu --external-backend simulated` for a portable check.
+FAISS-HNSW and MIRAGE always compute on CPU, including their exact fallbacks.
+Native MIRAGE requires custom Python bindings; stock `faiss-cpu` does not
+include it. Reports preserve the actual device, CPU thread counts, backend and
+fallback reason. See [external baseline details](docs/external_baselines.md)
+for reproducible commands and run status. The [completed CUDA benchmark](results/external_validation.json)
+records `status: "ok"` and `benchmark_completed: true` on an RTX 4070 SUPER.
+HNSW and MIRAGE used exact CPU fallbacks; cuVS-CAGRA used the CUDA PyTorch
+chunk-hole simulator. Thus `native_external_comparison_complete: false`:
+the measured results describe these implementations, not native external builds.
+Earlier `_ctypes` failure diagnostics are separate `*.error.json` files.
+
 Output defaults to `results/cagra_mirage_results.json` in the current working
-directory. Missing parents are created. Use a separate `--output` for new runs
+directory (`results/external.json` in external mode). Missing parents are created. Use a separate `--output` for new runs
 to preserve historical evidence. Failures write `<output-stem>.error.json`
 without replacing successful output.
 

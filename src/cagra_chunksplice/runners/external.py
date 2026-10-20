@@ -4,7 +4,7 @@ from __future__ import annotations
 import statistics
 import time
 
-from cagra_chunksplice.baselines import CuVSCAGRA, FaissHNSW, GraphBaseline, MirageChunkSplice
+from cagra_chunksplice.baselines import CuVSCAGRA, FaissHNSW, GraphBaseline, CPUMirage
 from cagra_chunksplice.core import exact_knn
 from cagra_chunksplice.data import generate_data, query_set
 from cagra_chunksplice.metrics import recall
@@ -12,7 +12,7 @@ from cagra_chunksplice.reporting import experiment_report, finish_report
 from cagra_chunksplice.timing import sample_summary
 
 
-METHODS = ("Naive", "ChunkSplice", "FAISS-HNSW", "cuVS-CAGRA", "MIRAGE-ChunkSplice")
+METHODS = ("Naive", "ChunkSplice", "FAISS-HNSW", "cuVS-CAGRA", "MIRAGE")
 
 
 def create_indexes(a, device):
@@ -23,7 +23,7 @@ def create_indexes(a, device):
         "FAISS-HNSW": FaissHNSW(device, a.external_backend, a.hnsw_m,
                                 a.hnsw_ef_construction, a.ef),
         "cuVS-CAGRA": CuVSCAGRA(a, device, a.external_backend),
-        "MIRAGE-ChunkSplice": MirageChunkSplice(a, device, a.mirage_buffer_capacity),
+        "MIRAGE": CPUMirage(device, a.external_backend),
     }
 
 
@@ -38,25 +38,30 @@ def _timed(index, operation):
 def benchmark_external(a, device):
     report = experiment_report(a, device, "external", list(METHODS))
     report.update({
-        "implementation": "Optional native external indexes and labeled PyTorch simulators",
+        "implementation": "GPU dynamic graph insertion versus CPU multi-threaded hierarchical insertion",
+        "architecture_groups": {
+            "cpu-hierarchical": ["FAISS-HNSW", "MIRAGE"],
+            "gpu-graph-insertion": ["Naive", "ChunkSplice", "cuVS-CAGRA"],
+        },
+        "gpu_execution_requested": device.type == "cuda",
         "scope": "Simulator latency measures this implementation only; it does not estimate "
-                 "external GPU performance. Native and simulated results must be distinguished.",
+                 "external CPU or GPU performance. CPU debug runs do not measure GPU insertion. "
+                 "Native and simulated results must be distinguished.",
         "method_definitions": {
             "Naive": "Existing PyTorch snapshot-insertion chunk-hole model.",
             "ChunkSplice": "Existing PyTorch budgeted intra-chunk graph repair.",
             "FAISS-HNSW": "Native CPU IndexHNSWFlat.add, or explicitly labeled exact fallback.",
             "cuVS-CAGRA": "Native cuVS build/extend/search, or Naive chunk-hole simulator.",
-            "MIRAGE-ChunkSplice": "MIRAGE-inspired buffer simulator with synchronous ChunkSplice merges.",
+            "MIRAGE": "CPU-only multi-layer MIRAGE-ANNS: NN-Descent base and RNG-pruned add; or exact CPU reference.",
         },
         "timing": {
             "statistic": "median wall milliseconds across independent stream replays",
             "repeats": a.repeats,
             "warmup": "one complete untimed stream replay using fresh indexes",
             "repeated_updates": "each measured replay builds fresh indexes; each batch is added once",
-            "includes": "adapter validation, allocations, transfers, insertion and synchronous merges",
+            "includes": "adapter validation, allocations, host/device transfers and insertion",
             "excludes": "initial build, data/query generation, exact truth and metric computation",
             "cuda_synchronization": "PyTorch and native CuPy streams before and after operations",
-            "final_buffer_drain": "included in the last update latency before final queries",
             "ordering": "method order rotated by stage and replay",
             "qps": "mixed-cohort batch size divided by median end-to-end query seconds",
             "summary_update_ms": "median total update time per replay divided by update count",
@@ -65,7 +70,7 @@ def benchmark_external(a, device):
         "controls": {
             "same_ordered_data_queries_truth": True,
             "graph_entries": "seeded by active size; old policy uses fixed seeded base entries; "
-                             "MIRAGE graph uses committed size; native indexes use their own traversal",
+                             "native CPU/GPU indexes use their own traversal; exact fallbacks have no graph",
             "optional_backend_policy": a.external_backend,
         },
         "stages": [],
@@ -108,8 +113,6 @@ def benchmark_external(a, device):
 
                 def update():
                     index.add(x[start:end])
-                    if offset == a.chunks - 1 and isinstance(index, MirageChunkSplice):
-                        index.flush()
 
                 _, update_ms = _timed(index, update)
                 prediction, query_ms = _timed(index, lambda: index.search(queries, 10))
@@ -129,7 +132,7 @@ def benchmark_external(a, device):
                 row["metadata"] = metadata
         del indexes
 
-    print("stage method                SIM backend                          Update Latency (ms) Mixed Recall@10 QPS",
+    print("stage method                SIM device backend                          Update Latency (ms) Mixed Recall@10 QPS",
           flush=True)
     for stage in report["stages"]:
         for name, record in stage["methods"].items():
@@ -144,7 +147,7 @@ def benchmark_external(a, device):
             })
             record["qps"] = a.queries * 1000.0 / max(record["query_ms"], 1e-12)
             sim_col = "YES" if record["simulated"] else "NO "
-            print(f"{stage['stage']:>5} {name:<21} {sim_col} {record['backend']:<32} "
+            print(f"{stage['stage']:>5} {name:<21} {sim_col} {record['metadata']['effective_device']:<6} {record['backend']:<32} "
                   f"{record['update_ms']:>19.3f} {record['recall10']:>15.4f} {record['qps']:>10.1f}",
                   flush=True)
     report["summary"] = {}
@@ -159,5 +162,8 @@ def benchmark_external(a, device):
             "backend": last["backend"], "simulated": last["simulated"],
             "metadata": last["metadata"],
         }
+    report["native_external_comparison_complete"] = all(
+        not report["summary"][name]["simulated"]
+        for name in ("FAISS-HNSW", "MIRAGE", "cuVS-CAGRA"))
     report["benchmark_completed"] = True
     return finish_report(report, device)

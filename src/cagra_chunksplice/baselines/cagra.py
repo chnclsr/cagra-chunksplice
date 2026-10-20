@@ -100,6 +100,8 @@ class CuVSCAGRA(IncrementalIndex):
 
     def metadata(self):
         return {**super().metadata(), "version": self.version,
+                "architecture": "gpu-graph-insertion",
+                "implementation_architecture": "pytorch-graph-model" if self.simulated else "native-gpu-graph",
                 "graph_degree": self.a.degree, "max_chunk_size": self.a.chunk_size,
                 "extend_api": ("concatenated" if self.concatenated_extend else "legacy")
                 if not self.simulated else None,
