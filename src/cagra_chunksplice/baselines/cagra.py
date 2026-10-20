@@ -103,6 +103,9 @@ class CuVSCAGRA(IncrementalIndex):
                 "architecture": "gpu-graph-insertion",
                 "implementation_architecture": "pytorch-graph-model" if self.simulated else "native-gpu-graph",
                 "graph_degree": self.a.degree, "max_chunk_size": self.a.chunk_size,
+                "search_parameters": {
+                    "itopk_size": max(32, ((max(10, self.a.ef) + 31) // 32) * 32),
+                    "search_width": self.a.search_width, "max_iterations": self.a.steps},
                 "extend_api": ("concatenated" if self.concatenated_extend else "legacy")
                 if not self.simulated else None,
                 "definition": "Native cuVS extension or PyTorch snapshot-insertion mechanism simulator."}

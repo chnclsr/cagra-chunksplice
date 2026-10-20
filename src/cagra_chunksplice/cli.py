@@ -77,6 +77,28 @@ def arguments(argv=None):
                    help="benchmark: standard run; sweep: chunk-size sweep; stream: checkpointed streaming; stress: streaming with global baselines (default 100 epochs); external: native/simulated index comparison.")
     p.add_argument("--external-backend", choices=("auto", "native", "simulated"), default="auto",
                    help="External indexes: auto selects native or labeled fallback; native requires libraries/hardware; simulated is portable.")
+    p.add_argument("--dataset", choices=("synthetic", "sift1m", "glove-100"), default="synthetic")
+    p.add_argument("--dataset-cache", type=Path, default=Path("~/.cache/cagra-chunksplice/datasets"))
+    p.add_argument("--download-datasets", action="store_true")
+    p.add_argument("--allow-synthetic-fallback", action="store_true",
+                   help="Explicitly substitute missing academic data; always label it synthetic.")
+    p.add_argument("--require-native-validation", action="store_true",
+                   help="Fail unless every measured external backend passes the native Promotion Gate.")
+    p.add_argument("--external-sweep", action="store_true",
+                   help="Rebuild/replay each configuration and export measured Pareto curves.")
+    p.add_argument("--mirage-s", type=int, default=32)
+    p.add_argument("--mirage-r", type=int, default=4)
+    p.add_argument("--mirage-iter", type=int, default=15)
+    p.add_argument("--graph-ef-values", type=int, nargs="+", default=[32, 64, 128])
+    p.add_argument("--hnsw-m-values", type=int, nargs="+", default=[16, 32])
+    p.add_argument("--hnsw-ef-search-values", type=int, nargs="+", default=[32, 64, 128])
+    p.add_argument("--mirage-s-values", type=int, nargs="+", default=[16, 32])
+    p.add_argument("--mirage-r-values", type=int, nargs="+", default=[4, 8])
+    p.add_argument("--mirage-iter-values", type=int, nargs="+", default=[10, 15])
+    p.add_argument("--cagra-itopk-values", type=int, nargs="+", default=[32, 64, 128])
+    p.add_argument("--cagra-search-width-values", type=int, nargs="+", default=[1, 4])
+    p.add_argument("--cagra-iterations-values", type=int, nargs="+", default=[8, 16])
+    p.add_argument("--recall-targets", type=float, nargs="+", default=[0.8, 0.9, 0.95])
     p.add_argument("--hnsw-m", type=int, default=32)
     p.add_argument("--hnsw-ef-construction", type=int, default=80)
     p.add_argument("--sweep-chunk-sizes", type=int, nargs="+",
@@ -92,6 +114,31 @@ def arguments(argv=None):
     p.add_argument("--output", type=Path,
                    default=None)
     a = p.parse_args(argv)
+    if a.mode != "external" and (a.dataset != "synthetic" or a.external_sweep or a.require_native_validation):
+        p.error("datasets, external-sweep and require-native-validation require external mode")
+    if a.dataset != "synthetic" and a.query_distribution != "in-distribution":
+        p.error("academic datasets use their registered metric and held-out queries")
+    if a.external_sweep and min(a.graph_ef_values) < a.search_width:
+        p.error("graph search-width must not exceed any graph-ef-values budget")
+    if a.require_native_validation and (a.external_backend != "native" or a.device != "cuda"):
+        p.error("require-native-validation requires --external-backend native --device cuda")
+    for key in ("mirage_s", "mirage_r", "mirage_iter"):
+        if getattr(a, key) <= 0:
+            p.error(key.replace("_", "-") + " must be positive")
+    for key in ("graph_ef_values", "hnsw_m_values", "hnsw_ef_search_values",
+                "mirage_s_values", "mirage_r_values", "mirage_iter_values",
+                "cagra_itopk_values", "cagra_search_width_values", "cagra_iterations_values"):
+        if any(v <= 0 for v in getattr(a, key)):
+            p.error(key.replace("_", "-") + " must be positive")
+    if any(not 0 < v <= 1 for v in a.recall_targets):
+        p.error("recall-targets must be finite and in (0, 1]")
+    if a.external_sweep:
+        if any(not 10 <= ef <= a.base for ef in a.graph_ef_values):
+            p.error("graph-ef-values must be in [10, base]")
+        if any(ef < 10 or ef % 32 for ef in a.cagra_itopk_values):
+            p.error("cagra-itopk-values must be multiples of 32 and >= 10")
+        if max(a.cagra_search_width_values) > min(a.cagra_itopk_values):
+            p.error("CAGRA search width cannot exceed itopk budget")
     if a.output is None:
         a.output = Path("results/external.json" if a.mode == "external"
                         else "results/cagra_mirage_results.json")
@@ -164,14 +211,25 @@ def main(argv=None):
                 return 0
             if a.mode == "external":
                 from cagra_chunksplice.runners.external import benchmark_external
-                report = benchmark_external(a, device)
+                if a.external_sweep:
+                    from cagra_chunksplice.runners.external_sweep import benchmark_external_sweep
+                    report = benchmark_external_sweep(a, device)
+                else:
+                    report = benchmark_external(a, device)
             elif a.mode == "sweep":
                 report = run_sweep(a, device)
             elif a.mode in ("stream", "stress"):
                 report = run_stream(a, device)
             else:
                 report = benchmark(a, device)
+        if a.mode == "external":
+            from cagra_chunksplice.promotion import validate_native_report
+            if a.external_backend == "native" or a.require_native_validation:
+                report["promotion_gate"] = validate_native_report(report)
         save_report(a.output, report)
+        if a.mode == "external" and a.external_sweep:
+            from cagra_chunksplice.pareto import curves_svg
+            a.output.with_suffix(".pareto.svg").write_text(curves_svg(report["curves"]), encoding="utf-8")
         print("JSON: " + str(a.output.resolve()), flush=True)
         if a.verify_effect and a.mode == "benchmark" and not report.get("effect_demonstrated", False):
             print("Requested effect threshold not met; inspect measured results.",

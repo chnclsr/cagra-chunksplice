@@ -91,6 +91,42 @@ Total Out-Degree Budget: R (e.g., R = 24)
 
 Detailed benchmark logs and full floating-point values are preserved in [docs/results.md](docs/results.md) and [results/](results/).
 
+### External Baselines Benchmark Status & Promotion Gate
+
+The primary Key Experimental Results tables below contain controlled PyTorch
+measurements. External baseline numbers may enter those tables only after all
+promotion requirements below are met. A successful fallback run is functional
+validation, not a native performance comparison.
+
+| External baseline | Native execution required | Recorded status in `results/external_validation.json` | Primary-table eligibility |
+| --- | --- | --- | --- |
+| cuVS-CAGRA | Actual CUDA `cagra.build/extend/search` binaries. | Simulated: CUDA PyTorch chunk-hole model (`torch-cagra-chunk-hole`); CuPy unavailable. | Blocked pending native dataset sweeps. |
+| FAISS-HNSW | Compiled CPU FAISS `IndexHNSWFlat.add/search`. | Simulated: exact CPU reference (`torch-exact`); FAISS unavailable. | Blocked pending native dataset sweeps. |
+| MIRAGE | Compiled upstream CPU `IndexMirage.add/search` through the C ABI bridge or custom bindings. | Simulated: exact CPU reference (`torch-exact-cpu`); FAISS unavailable. | Blocked pending native dataset sweeps. |
+
+| Promotion requirement | Evidence required before publishing external numbers in the primary tables |
+| --- | --- |
+| Native binaries | All three external methods must execute native build, incremental add and search, with recorded versions/revisions, correct CPU/CUDA devices, `simulated: false`, and `native_external_comparison_complete: true`. Imports, mocks and setup smoke tests alone are insufficient. |
+| SIFT1M and GloVe | Measured runs on real SIFT1M (`sift1m`) and GloVe-100 (`glove-100`) with dataset hashes, explicit corpus/query counts and split/metric provenance. Full-corpus claims require `full_academic_corpus: true`; subsets must be labeled. Synthetic substitutes cannot satisfy this gate. |
+| Pareto frontier sweeps | Fresh-index parameter sweeps for all compared methods on shared data and queries, retaining measured recall/QPS frontiers, per-point update latency and replay samples. Compare the fastest measured points meeting the same recall target; report unattained targets without interpolation. |
+| Reproducible evidence | Successful native report validation plus archived JSON, frontier SVG, build manifest, hardware/software and thread settings. Review dataset coverage and sweep completeness before promotion; a native validation pass alone does not establish superiority or publication eligibility. |
+
+Run the native path from the repository root in an activated Linux/WSL2 Python
+environment with an NVIDIA GPU and compatible CUDA dependencies:
+
+```bash
+bash scripts/build_external.sh --probe
+bash scripts/build_external.sh --cuda-major 12
+bash scripts/run_native_validation.sh --dataset sift1m --download-datasets --external-sweep --base 800000 --chunks 4 --chunk-size 50000 --queries 1000 --repeats 3 --output results/native_sift1m.json
+bash scripts/run_native_validation.sh --dataset glove-100 --download-datasets --external-sweep --base 983514 --chunks 4 --chunk-size 50000 --queries 1000 --repeats 3 --output results/native_glove100.json
+```
+
+Select the CUDA major matching the environment, and pin upstream revisions for
+publication runs. These full-corpus sweeps require substantial compute and
+memory; they are commands, not recorded results or runtime estimates. See
+[native setup, sweep controls and gate limitations](docs/external_baselines.md#native-setup-and-validation)
+before running.
+
 ### Controlled chunk-size sweep (2048-dim, degree 24)
 
 | Chunk size | Updates | Method | Mixed Recall@10 | Inserted R@10 | Shared-tail R@10 | Update trajectory (ms) | Mixed QPS |
@@ -244,8 +280,9 @@ python experiments/benchmark_external.py --device cuda --external-backend auto -
 
 Use `--device cpu --external-backend simulated` for a portable check.
 FAISS-HNSW and MIRAGE always compute on CPU, including their exact fallbacks.
-Native MIRAGE requires custom Python bindings; stock `faiss-cpu` does not
-include it. Reports preserve the actual device, CPU thread counts, backend and
+Native MIRAGE requires the compiled upstream C ABI bridge or custom Python
+bindings; stock `faiss-cpu` does not include it. Reports preserve the actual
+device, CPU thread counts, backend and
 fallback reason. See [external baseline details](docs/external_baselines.md)
 for reproducible commands and run status. The [completed CUDA benchmark](results/external_validation.json)
 records `status: "ok"` and `benchmark_completed: true` on an RTX 4070 SUPER.

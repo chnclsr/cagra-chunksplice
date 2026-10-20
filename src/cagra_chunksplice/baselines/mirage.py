@@ -12,6 +12,7 @@ only an exact CPU functional reference, not a MIRAGE graph or timing model.
 from __future__ import annotations
 
 import importlib
+import os
 
 import torch
 
@@ -21,9 +22,12 @@ from .base import CPUIndex, check_backend, unavailable
 class CPUMirage(CPUIndex):
     """Append directly through native CPU add, or use an exact CPU reference."""
 
-    def __init__(self, device="cpu", backend="auto"):
+    def __init__(self, device="cpu", backend="auto", *, s=None, r=None, iterations=None):
         super().__init__(device)
         check_backend(backend)
+        if any(v is not None and (type(v) is not int or v <= 0) for v in (s, r, iterations)):
+            raise ValueError("MIRAGE S/R/iter must be positive integers")
+        self.parameters = {"S": s, "R": r, "iter": iterations}
         self.requested_backend = backend
         self.index = None
         self.version = None
@@ -35,12 +39,32 @@ class CPUMirage(CPUIndex):
         if self.requested_backend == "simulated":
             self.fallback_reason = "exact CPU reference explicitly requested; no MIRAGE hierarchy"
             return
+        library = os.environ.get("CAGRA_MIRAGE_LIBRARY")
+        if library:
+            from .mirage_bridge import MirageBridge
+            try:
+                self.index = MirageBridge(library, vectors.shape[1],
+                                          self.parameters["S"] or 32,
+                                          self.parameters["R"] or 4,
+                                          self.parameters["iter"] or 15)
+            except OSError as exc:
+                unavailable(self, self.requested_backend, exc)
+                return
+            self.index.add(vectors.numpy())
+            self.backend, self.simulated = "faiss-mirage-cpu", False
+            self.version, self.native_threads = self.index.version, self.index.threads
+            return
         try:
             faiss = importlib.import_module("faiss")
             if not hasattr(faiss, "IndexMirage"):
                 raise ImportError("MIRAGE requires custom faiss.IndexMirage Python bindings; "
                                   "stock faiss-cpu is insufficient")
             index = faiss.IndexMirage(vectors.shape[1])
+            for key, value in self.parameters.items():
+                if value is not None:
+                    if not hasattr(index.mirage, key):
+                        raise RuntimeError("MIRAGE bindings cannot configure " + key)
+                    setattr(index.mirage, key, value)
             index.add(vectors.numpy())
         except ImportError as exc:
             unavailable(self, self.requested_backend, exc)
@@ -62,6 +86,8 @@ class CPUMirage(CPUIndex):
 
     def metadata(self):
         return {**super().metadata(), "version": self.version,
+                "binding": "upstream-c-abi" if hasattr(self.index, "library_path") else "custom-faiss",
+                "library_path": getattr(self.index, "library_path", None),
                 "native_algorithm": {
                     "hierarchy": "multi-layer",
                     "base_construction": "NN-Descent with RNG pruning",

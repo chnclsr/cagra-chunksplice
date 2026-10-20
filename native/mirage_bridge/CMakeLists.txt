@@ -1,0 +1,20 @@
+cmake_minimum_required(VERSION 3.18)
+project(chunksplice_mirage_bridge LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+if(NOT MIRAGE_SOURCE OR NOT MIRAGE_BUILD)
+  message(FATAL_ERROR "Pass -DMIRAGE_SOURCE and -DMIRAGE_BUILD")
+endif()
+# Link only the CPU upstream target, never stock FAISS or a simulator.
+find_library(MIRAGE_FAISS NAMES faiss PATHS "${MIRAGE_BUILD}/faiss" NO_DEFAULT_PATH REQUIRED)
+find_path(MIRAGE_INCLUDE NAMES faiss/IndexMIRAGE.h faiss/IndexMirage.h
+          PATHS "${MIRAGE_SOURCE}" "${MIRAGE_SOURCE}/faiss" NO_DEFAULT_PATH REQUIRED)
+find_package(OpenMP REQUIRED)
+find_package(BLAS REQUIRED)
+find_package(LAPACK REQUIRED)
+add_library(chunksplice_mirage SHARED bridge.cpp)
+target_include_directories(chunksplice_mirage PRIVATE "${MIRAGE_INCLUDE}")
+target_link_libraries(chunksplice_mirage PRIVATE "${MIRAGE_FAISS}" OpenMP::OpenMP_CXX
+                      ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES})
+target_compile_definitions(chunksplice_mirage PRIVATE MIRAGE_REVISION="${MIRAGE_REVISION}")
+set_target_properties(chunksplice_mirage PROPERTIES BUILD_RPATH "${MIRAGE_BUILD}/faiss")

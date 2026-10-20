@@ -6,7 +6,9 @@ import time
 
 from cagra_chunksplice.baselines import CuVSCAGRA, FaissHNSW, GraphBaseline, CPUMirage
 from cagra_chunksplice.core import exact_knn
-from cagra_chunksplice.data import generate_data, query_set
+from cagra_chunksplice.data import query_set
+from cagra_chunksplice.datasets import load_external_data
+from cagra_chunksplice.promotion import EXTERNAL_METHODS, native_row, native_rows_complete
 from cagra_chunksplice.metrics import recall
 from cagra_chunksplice.reporting import experiment_report, finish_report
 from cagra_chunksplice.timing import sample_summary
@@ -15,16 +17,18 @@ from cagra_chunksplice.timing import sample_summary
 METHODS = ("Naive", "ChunkSplice", "FAISS-HNSW", "cuVS-CAGRA", "MIRAGE")
 
 
-def create_indexes(a, device):
-    """Return fresh indexes; optional libraries are loaded only during build."""
-    return {
-        "Naive": GraphBaseline(a, "Naive", device),
-        "ChunkSplice": GraphBaseline(a, "ChunkSplice", device),
-        "FAISS-HNSW": FaissHNSW(device, a.external_backend, a.hnsw_m,
-                                a.hnsw_ef_construction, a.ef),
-        "cuVS-CAGRA": CuVSCAGRA(a, device, a.external_backend),
-        "MIRAGE": CPUMirage(device, a.external_backend),
+def create_indexes(a, device, methods=METHODS):
+    """Return only requested fresh indexes; imports happen during build."""
+    factories = {
+        "Naive": lambda: GraphBaseline(a, "Naive", device),
+        "ChunkSplice": lambda: GraphBaseline(a, "ChunkSplice", device),
+        "FAISS-HNSW": lambda: FaissHNSW(device, a.external_backend, a.hnsw_m,
+                                      a.hnsw_ef_construction, a.ef),
+        "cuVS-CAGRA": lambda: CuVSCAGRA(a, device, a.external_backend),
+        "MIRAGE": lambda: CPUMirage(device, a.external_backend,
+                                   s=a.mirage_s, r=a.mirage_r, iterations=a.mirage_iter),
     }
+    return {name: factories[name]() for name in methods}
 
 
 def _timed(index, operation):
@@ -35,8 +39,10 @@ def _timed(index, operation):
     return value, (time.perf_counter() - start) * 1000.0
 
 
-def benchmark_external(a, device):
-    report = experiment_report(a, device, "external", list(METHODS))
+def benchmark_external(a, device, *, methods=METHODS, prepared=None):
+    prepared = prepared or load_external_data(a, device)
+    x, heldout_queries, centers, gen, dataset_info = prepared
+    report = experiment_report(a, device, "external", list(methods))
     report.update({
         "implementation": "GPU dynamic graph insertion versus CPU multi-threaded hierarchical insertion",
         "architecture_groups": {
@@ -83,32 +89,40 @@ def benchmark_external(a, device):
         "latest_chunk_count": 0,
         "stage_zero": "not evaluated in external mode",
     })
-    x, centers, gen = generate_data(a, device)
+    report["dataset"] = dataset_info
+    if heldout_queries is not None:
+        report["query_cohorts"] = {
+            "comparison": "shared held-out queries and exact per-prefix truth",
+            "distribution": dataset_info["metric"], "old_count": 0, "inserted_count": 0,
+            "latest_chunk_count": 0, "source_age_cohorts": "not defined for held-out academic queries",
+        }
     x_cpu = x.cpu()
     checkpoints = []
     for stage in range(1, a.chunks + 1):
         end = a.base + stage * a.chunk_size
-        queries, _ = query_set(x_cpu, centers, stage * a.chunk_size, a, gen)
+        queries = heldout_queries
+        if queries is None:
+            queries, _ = query_set(x_cpu, centers, stage * a.chunk_size, a, gen)
         queries = queries.to(device)
         truth = exact_knn(queries, x[:end], 10, a.distance_batch)
         checkpoints.append((queries, truth))
         report["stages"].append({
             "stage": stage, "n": end,
             "methods": {name: {"update_samples_ms": [], "query_samples_ms": [],
-                                "recall10_samples": []} for name in METHODS},
+                                "recall10_samples": []} for name in methods},
         })
 
     backend_identities = {}
     for trial in range(-1, a.repeats):
-        indexes = create_indexes(a, device)
+        indexes = create_indexes(a, device, methods)
         for index in indexes.values():
             index.build(x[:a.base])
             index.synchronize()
         for offset, (queries, truth) in enumerate(checkpoints):
             start = a.base + offset * a.chunk_size
             end = start + a.chunk_size
-            shift = (offset + trial + 1) % len(METHODS)
-            for name in METHODS[shift:] + METHODS[:shift]:
+            shift = (offset + trial + 1) % len(methods)
+            for name in methods[shift:] + methods[:shift]:
                 index = indexes[name]
 
                 def update():
@@ -118,13 +132,17 @@ def benchmark_external(a, device):
                 prediction, query_ms = _timed(index, lambda: index.search(queries, 10))
                 if index.ntotal != end:
                     raise AssertionError("index did not append exactly one update batch")
-                if trial < 0:
-                    continue
                 metadata = index.metadata()
-                identity = (metadata["backend"], metadata.get("version"))
+                if a.external_backend == "native" and name in EXTERNAL_METHODS:
+                    if not native_row(name, {"metadata": metadata, **metadata}):
+                        raise RuntimeError("native backend returned invalid provenance: " + name)
+                identity = (metadata["backend"], metadata.get("version"), metadata["simulated"],
+                            metadata["effective_device"])
                 if name in backend_identities and backend_identities[name] != identity:
                     raise RuntimeError("backend changed between replays: " + name)
                 backend_identities[name] = identity
+                if trial < 0:
+                    continue
                 row = report["stages"][offset]["methods"][name]
                 row["update_samples_ms"].append(update_ms)
                 row["query_samples_ms"].append(query_ms)
@@ -151,7 +169,7 @@ def benchmark_external(a, device):
                   f"{record['update_ms']:>19.3f} {record['recall10']:>15.4f} {record['qps']:>10.1f}",
                   flush=True)
     report["summary"] = {}
-    for name in METHODS:
+    for name in methods:
         totals = [sum(stage["methods"][name]["update_samples_ms"][trial]
                       for stage in report["stages"]) for trial in range(a.repeats)]
         last = report["stages"][-1]["methods"][name]
@@ -162,8 +180,11 @@ def benchmark_external(a, device):
             "backend": last["backend"], "simulated": last["simulated"],
             "metadata": last["metadata"],
         }
-    report["native_external_comparison_complete"] = all(
-        not report["summary"][name]["simulated"]
-        for name in ("FAISS-HNSW", "MIRAGE", "cuVS-CAGRA"))
+    report["native_external_comparison_complete"] = (
+        native_rows_complete(report["summary"])
+        and all(native_rows_complete(stage["methods"]) for stage in report["stages"]))
+    report["simulated"] = any(report["summary"][name]["simulated"]
+                              for name in methods if name in EXTERNAL_METHODS)
+    report["simulated_scope"] = "external backends only; Naive/ChunkSplice remain PyTorch models"
     report["benchmark_completed"] = True
     return finish_report(report, device)
