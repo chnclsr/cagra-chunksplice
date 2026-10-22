@@ -3,48 +3,50 @@
   "status": "ok",
   "experiment": "external",
   "implementation": "GPU dynamic graph insertion versus CPU multi-threaded hierarchical insertion",
-  "started_at_utc": "2026-10-20T08:03:44.336585+00:00",
-  "source_sha256": "ed4dcc6373ac07d9a2fc0087c41b5beee8fa703ec400304bac7ce02c0e884f59",
+  "started_at_utc": "2026-10-22T14:36:21.131331+00:00",
+  "source_sha256": "d1830af7c7515bab42dff11fea441674421d3d8bfcdc51f568bbd7a70160b6e1",
   "source_sha256_scope": "sha256 of canonical JSON source_files_sha256 manifest",
   "source_files_sha256": {
-    "__init__.py": "443f6a1d277c92f70c854584198c4a3ab9cee73cefd0c549c70d5ba830d302df",
-    "__main__.py": "119200e296c7c813ca764b2fe113ac417417688eff95d63d87bf3722aae9b4f1",
-    "algorithms/__init__.py": "792e0de9b487a76c7772bd01c16902b471b89912683288ddd0354e32823b4a5f",
-    "algorithms/chunk_splice.py": "7198a9270f6fdc6cdebbeb36e0301d5b05d3228b1ffd9858f092ca91155f02d8",
-    "algorithms/insertion.py": "bdfab11faa5454bd74dbb543979ec4d3e28900cfaaf5024b909ae800ed407cbf",
-    "algorithms/local_rng.py": "15e16d0d33b07b8cded44916b4c2817e0d148055fd0da3934052bcdc192515a0",
-    "algorithms/naive.py": "a4cd825a37766f92df2a5952faa31631519a44392eeb03189163d50974bc55d4",
-    "algorithms/pruning.py": "dc62fdf164ff986035ef833d735e0e27f66b21541f2db0d7afafd5fab1388668",
-    "baselines/__init__.py": "28a2f702fad00663ee22980aa18cc7694e62076702f2237e406824879cbe0817",
-    "baselines/base.py": "5dde3ac28498e428346571e30438a573ce1c1775ee5d67ce23d6c0ed20e6501a",
-    "baselines/cagra.py": "542c6b2288a879acfd9df9810125c0574b71c214201b6a9d6f8a717761da4aae",
-    "baselines/faiss_hnsw.py": "587002cfa2944873445d4ddaac94ada78accb5f79cb281c20c809d35d512e93b",
-    "baselines/mirage.py": "d3c6fc4e4041aba148a56c7cf043615b13414e523407efbf3cb0bb4efd2f00df",
-    "cli.py": "604709fa0394feccf82879d487a3323dea795e861623de112f1029739f219354",
-    "core.py": "b3bf1d694ab2b18f247c0af4b75721be84c7e7a1bdc2dbfc5aedd45ede7a8fa0",
-    "data.py": "16ec2cb48dc162b3cb9a93b0b5db06c3262786c0683bb8c6cb468e3f5a96cf98",
-    "evaluation.py": "28f00e6d6817ad124f60095247f886ccbe9b43d57052e35b4ba2ee1303cd057f",
-    "graph.py": "60975f0ca634f452bbacfc123c567b9af6af8c3e4cc590d2d8e648cc4018fb16",
-    "metrics.py": "4369c93b9bbb2e638a0c200b192d7a3e688c9109695d8c362f0237ec373b7f42",
-    "reporting.py": "bea903a0ad62931ffeffac69d0da13cdd7bc318e8c3c1548bae007921640b517",
-    "runners/__init__.py": "51f7f618774006cea9fe2f167ba2a68b3bf982803a23302ea1b700a697a92e2d",
-    "runners/benchmark.py": "1c61ad44e334984566ba43ef1b268d24f56f0a8b1dd67a096248a05dd1e94f44",
-    "runners/external.py": "9bb4f083bd3e6e08ccdda326ce6f88c86e79731698caf3068ca1ceaaadf5628b",
-    "runners/stream.py": "81bd488e76624704e9eaec0efb7c2574e843a562999dbd7038c235223cb5887d",
-    "runners/sweep.py": "694674ce7a6c0a5266627705358dc19055c9546606479054eb5e53238dec4d4a",
-    "search.py": "5c6176d85af29d6052c5894a3748b23a24ed757ba21dc6d54467637458d9cc52",
-    "selftest.py": "4c38893d7e7e2eb29d54628037a962870bb327a862116d26f461c84c12fafa6e",
-    "timing.py": "30848206cb2ede37940b7e208621f6187745f590c3e0bde61bc2deff4c12f43d"
+    "__main__.py": "307299fda7b77d22c64cb51430ec75e5f59d78e9c948786afb3b2544fe45e4b7",
+    "algorithms/chunk_splice.py": "cdbcaf184d90c420163987c20f0aad088863929315905910d196c6a71b36505e",
+    "algorithms/insertion.py": "4cb6b1be340dc97b87ecf3b68414bed6af143bca12115530c82c5f6aaa295be7",
+    "algorithms/local_rng.py": "cece5420606b54cbe4e5a15278caf93f5c3af9ce7df69ed222503a112cecdc8b",
+    "algorithms/naive.py": "d771bfd1e5a1ee1c87eff163fa91eb06ed474f26b0637a76be0387430e05bcc9",
+    "algorithms/pruning.py": "943121233a344aa2bd808adea15eb026caaf81822cd5c8b76608136ab6a537a0",
+    "baselines/__init__.py": "84e38b618c2284f22cd8683fe35b6ec4c18a3aad47d5311a8eb3fa6866a9d81d",
+    "baselines/base.py": "4b901d6290fa534242d5b7f87ef1ffed26a83d98d68d4a77691544c9b477ec8d",
+    "baselines/cagra.py": "e4a94a329fa6b39f9d470b29debd8954603e16c2813605c86d182ff045977332",
+    "baselines/faiss_hnsw.py": "92b0b3a5b39c920701b05b067dcb69f3e4f9266fea33c1a330e0e0511fe1a805",
+    "baselines/mirage.py": "64f5f0a5c79a55af13fb22a3f489058409b313d1a490c730664e54e40e367e8e",
+    "baselines/mirage_bridge.py": "9f510c190ce06b34bad518cda56f9127bc59e514fab2793b0caba2738216c247",
+    "cli.py": "09799ff0a9bab9d2765a5d681fd62a2803a8be8787df93be8d31067fc98a7734",
+    "core.py": "15e61dfae3ebbdcb5ce0ac5a05535fb342bc36f4d576ca70248910936e8b51ab",
+    "data.py": "65e9dba97ad322a3ffa4a3302f44d3160fa7f615df3a3c747290e99e1e414380",
+    "datasets.py": "ff6432a2ade96c034ef83e878b502c7851b3013391086ed09325c2e5144933ba",
+    "evaluation.py": "cfee8b65f83681e0832160396681b018cb70991a3d4f8ac649aab7bfc85ae77d",
+    "graph.py": "ed6c6e21459a18d76f2c65dcf49f92f69cfa8441d368d77ecd9811f3935dd36d",
+    "metrics.py": "4e367d585fba23effd0f8a4fab7d510eb9ab1e1c743013e94bf1a9b292adc295",
+    "pareto.py": "d3b4e413ef29c13e83105dbfd5331faa2eaa929273294021c4c651255a0e0405",
+    "promotion.py": "9fe61258e43344161df80124837908b5d4fba118a2354695d64205ac242aaf15",
+    "reporting.py": "06bdef4d3ef3ee36182753e3100a3a50d82bd5f398ce52dca23d24db55da086c",
+    "runners/benchmark.py": "b0d71e6b8bcbdccdbf45560f4a490ca0a6bd125e5ea17fa45c1e4cddd1f4ef7e",
+    "runners/external.py": "08d486b8513740f6b659bdf7e2b5c2cc155619a8d5dd302b20bbe64e6b770ae0",
+    "runners/external_sweep.py": "12a74e0eedcc783244eea46ad1134ac84736a865d360fb98396d0a4676042608",
+    "runners/stream.py": "f1ccbd48d6b0ab7da8905e2fbf7fb320f696b049d68d67c76e0c798426618581",
+    "runners/sweep.py": "a4cbd29ebed16dfe84abea4445bd47821acca23832f685d7ee95d8ac193b859e",
+    "search.py": "c6b86df8029c4f8a09e894801b4132f7363fb51c6ab483878cdf2092fa3d643f",
+    "selftest.py": "2de669e0b3ca38d9d2b25c1934296e3725edb7bb5861d0fc3fe4a0cbdbc611b4",
+    "timing.py": "a66e412214aebf21faa1c8d6c427a4cb44a0c7b88780aa0f08c8de5f0dd39492"
   },
   "environment": {
-    "python": "3.13.5 | packaged by Anaconda, Inc. | (main, Jun 12 2025, 16:37:03) [MSC v.1929 64 bit (AMD64)]",
-    "torch": "2.11.0+cu128",
-    "torch_cuda": "12.8",
+    "python": "3.12.15 (main, Oct 13 2026, 16:52:04) [GCC 15.3.0]",
+    "torch": "2.6.0+cu124",
+    "torch_cuda": "12.4",
     "device": "cuda",
     "gpu": "NVIDIA GeForce RTX 4070 SUPER",
-    "platform": "Windows-11-10.0.26200-SP0",
-    "cpu_threads": 20,
-    "interop_threads": 20,
+    "platform": "Linux-6.18.54.1-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+    "cpu_threads": 14,
+    "interop_threads": 14,
     "dtype": "float32",
     "distance": "squared_l2",
     "tf32_matmul": false,
@@ -85,12 +87,65 @@
     "ood_shift": 4.0,
     "age_queries": 32,
     "stream_rebuild": false,
-    "repeats": 1,
+    "repeats": 3,
     "seed": 42,
     "entry_policy": "all",
     "workload": "drift",
     "mode": "external",
-    "external_backend": "auto",
+    "external_backend": "native",
+    "dataset": "synthetic",
+    "dataset_cache": "~/.cache/cagra-chunksplice/datasets",
+    "download_datasets": false,
+    "allow_synthetic_fallback": false,
+    "require_native_validation": true,
+    "external_sweep": false,
+    "mirage_s": 32,
+    "mirage_r": 4,
+    "mirage_iter": 15,
+    "graph_ef_values": [
+      32,
+      64,
+      128
+    ],
+    "hnsw_m_values": [
+      16,
+      32
+    ],
+    "hnsw_ef_search_values": [
+      32,
+      64,
+      128
+    ],
+    "mirage_s_values": [
+      16,
+      32
+    ],
+    "mirage_r_values": [
+      4,
+      8
+    ],
+    "mirage_iter_values": [
+      10,
+      15
+    ],
+    "cagra_itopk_values": [
+      32,
+      64,
+      128
+    ],
+    "cagra_search_width_values": [
+      1,
+      4
+    ],
+    "cagra_iterations_values": [
+      8,
+      16
+    ],
+    "recall_targets": [
+      0.8,
+      0.9,
+      0.95
+    ],
     "hnsw_m": 32,
     "hnsw_ef_construction": 80,
     "sweep_chunk_sizes": [
@@ -103,7 +158,7 @@
     "stream_eval_every": 10,
     "self_test_only": false,
     "verify_effect": false,
-    "output": "results\\external_validation.json"
+    "output": "results/external_validation.json"
   },
   "methods": [
     "Naive",
@@ -121,7 +176,7 @@
   },
   "timing": {
     "statistic": "median wall milliseconds across independent stream replays",
-    "repeats": 1,
+    "repeats": 3,
     "warmup": "one complete untimed stream replay using fresh indexes",
     "repeated_updates": "each measured replay builds fresh indexes; each batch is added once",
     "includes": "adapter validation, allocations, host/device transfers and insertion",
@@ -163,7 +218,7 @@
   "controls": {
     "same_ordered_data_queries_truth": true,
     "graph_entries": "seeded by active size; old policy uses fixed seeded base entries; native CPU/GPU indexes use their own traversal; exact fallbacks have no graph",
-    "optional_backend_policy": "auto"
+    "optional_backend_policy": "native"
   },
   "stages": [
     {
@@ -172,12 +227,18 @@
       "methods": {
         "Naive": {
           "update_samples_ms": [
-            5.144200000131605
+            5.264890998660121,
+            5.163035999430576,
+            5.460471998958383
           ],
           "query_samples_ms": [
-            90.4500999999982
+            50.19494800217217,
+            54.63455700009945,
+            50.26114499924006
           ],
           "recall10_samples": [
+            0.965624988079071,
+            0.965624988079071,
             0.965624988079071
           ],
           "metadata": {
@@ -190,33 +251,39 @@
             "architecture": "gpu-graph-insertion",
             "implementation_architecture": "pytorch-graph-model"
           },
-          "update_ms": 5.144200000131605,
+          "update_ms": 5.264890998660121,
           "update_sample_summary": {
-            "min_ms": 5.144200000131605,
-            "max_ms": 5.144200000131605,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 5.163035999430576,
+            "max_ms": 5.460471998958383,
+            "stdev_ms": 0.1234209339171459,
+            "coefficient_of_variation": 0.02330397177338043
           },
-          "query_ms": 90.4500999999982,
+          "query_ms": 50.26114499924006,
           "recall10": 0.965624988079071,
           "query_sample_summary": {
-            "min_ms": 90.4500999999982,
-            "max_ms": 90.4500999999982,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 50.19494800217217,
+            "max_ms": 54.63455700009945,
+            "stdev_ms": 2.0774247579945544,
+            "coefficient_of_variation": 0.04018471954255731
           },
           "backend": "torch-naive",
           "simulated": true,
-          "qps": 2830.289850425871
+          "qps": 5093.397693265259
         },
         "ChunkSplice": {
           "update_samples_ms": [
-            9.103900000127396
+            12.837932001275476,
+            8.733132999623194,
+            8.719522000319557
           ],
           "query_samples_ms": [
-            56.1413000000357
+            49.341799996909685,
+            52.9606669988425,
+            50.39486600071541
           ],
           "recall10_samples": [
+            0.991406261920929,
+            0.991406261920929,
             0.991406261920929
           ],
           "metadata": {
@@ -229,165 +296,194 @@
             "architecture": "gpu-graph-insertion",
             "implementation_architecture": "pytorch-graph-model"
           },
-          "update_ms": 9.103900000127396,
+          "update_ms": 8.733132999623194,
           "update_sample_summary": {
-            "min_ms": 9.103900000127396,
-            "max_ms": 9.103900000127396,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 8.719522000319557,
+            "max_ms": 12.837932001275476,
+            "stdev_ms": 1.9382369147484222,
+            "coefficient_of_variation": 0.1919642806529768
           },
-          "query_ms": 56.1413000000357,
+          "query_ms": 50.39486600071541,
           "recall10": 0.991406261920929,
           "query_sample_summary": {
-            "min_ms": 56.1413000000357,
-            "max_ms": 56.1413000000357,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 49.341799996909685,
+            "max_ms": 52.9606669988425,
+            "stdev_ms": 1.5198128959418182,
+            "coefficient_of_variation": 0.029859321039555617
           },
           "backend": "torch-chunksplice",
           "simulated": true,
-          "qps": 4559.922908800423
+          "qps": 5079.882541931272
         },
         "FAISS-HNSW": {
           "update_samples_ms": [
-            0.1300000001265289
+            15.64861299993936,
+            7.578777000162518,
+            11.568597998120822
           ],
           "query_samples_ms": [
-            0.6900000000769069
+            0.9988260026148055,
+            0.9833300027821679,
+            1.0576630011200905
           ],
           "recall10_samples": [
-            1.0
+            0.9996094107627869,
+            0.9996094107627869,
+            0.9996094107627869
           ],
           "metadata": {
-            "backend": "torch-exact",
-            "simulated": true,
+            "backend": "faiss-hnsw-cpu",
+            "simulated": false,
             "requested_device": "cuda",
             "effective_device": "cpu",
-            "fallback_reason": "ModuleNotFoundError: No module named 'faiss'",
+            "fallback_reason": "FAISS HNSW has no native GPU implementation; using CPU HNSW",
             "ntotal": 2304,
             "architecture": "cpu-hierarchical",
-            "cpu_threads": 20,
-            "threading": "PyTorch CPU thread pool",
-            "implementation_architecture": "exact-reference",
-            "version": null,
+            "cpu_threads": 14,
+            "threading": "native OpenMP",
+            "implementation_architecture": "cpu-hierarchical",
+            "version": "1.15.1",
             "m": 32,
             "ef_construction": 80,
             "ef_search": 64,
             "definition": "Native CPU HNSW or exact reference; fallback is not an HNSW performance model."
           },
-          "update_ms": 0.1300000001265289,
+          "update_ms": 11.568597998120822,
           "update_sample_summary": {
-            "min_ms": 0.1300000001265289,
-            "max_ms": 0.1300000001265289,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 7.578777000162518,
+            "max_ms": 15.64861299993936,
+            "stdev_ms": 3.294565340983839,
+            "coefficient_of_variation": 0.28404700057536386
           },
-          "query_ms": 0.6900000000769069,
-          "recall10": 1.0,
+          "query_ms": 0.9988260026148055,
+          "recall10": 0.9996094107627869,
           "query_sample_summary": {
-            "min_ms": 0.6900000000769069,
-            "max_ms": 0.6900000000769069,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 0.9833300027821679,
+            "max_ms": 1.0576630011200905,
+            "stdev_ms": 0.03201963468080453,
+            "coefficient_of_variation": 0.03160020508999813
           },
-          "backend": "torch-exact",
-          "simulated": true,
-          "qps": 371014.4927122702
+          "backend": "faiss-hnsw-cpu",
+          "simulated": false,
+          "qps": 256300.89658241076
         },
         "cuVS-CAGRA": {
           "update_samples_ms": [
-            4.573100000015984
+            4.931255996780237,
+            5.170344000362093,
+            5.556703999900492
           ],
           "query_samples_ms": [
-            49.03620000004594
+            2.7424670006439555,
+            3.1720820006739814,
+            3.3996049969573505
           ],
           "recall10_samples": [
-            0.965624988079071
+            0.999218761920929,
+            1.0,
+            0.9996094107627869
           ],
           "metadata": {
-            "backend": "torch-cagra-chunk-hole",
-            "simulated": true,
+            "backend": "cuvs-cagra-cuda",
+            "simulated": false,
             "requested_device": "cuda",
             "effective_device": "cuda",
-            "fallback_reason": "ModuleNotFoundError: No module named 'cupy'",
+            "fallback_reason": null,
             "ntotal": 2304,
-            "version": null,
+            "version": "26.10.00",
             "architecture": "gpu-graph-insertion",
-            "implementation_architecture": "pytorch-graph-model",
+            "implementation_architecture": "native-gpu-graph",
             "graph_degree": 24,
             "max_chunk_size": 256,
-            "extend_api": null,
+            "search_parameters": {
+              "itopk_size": 64,
+              "search_width": 4,
+              "max_iterations": 16
+            },
+            "extend_api": "concatenated",
             "definition": "Native cuVS extension or PyTorch snapshot-insertion mechanism simulator."
           },
-          "update_ms": 4.573100000015984,
+          "update_ms": 5.170344000362093,
           "update_sample_summary": {
-            "min_ms": 4.573100000015984,
-            "max_ms": 4.573100000015984,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 4.931255996780237,
+            "max_ms": 5.556703999900492,
+            "stdev_ms": 0.2576867881982102,
+            "coefficient_of_variation": 0.04937063201357111
           },
-          "query_ms": 49.03620000004594,
-          "recall10": 0.965624988079071,
+          "query_ms": 3.1720820006739814,
+          "recall10": 0.9996093908945719,
           "query_sample_summary": {
-            "min_ms": 49.03620000004594,
-            "max_ms": 49.03620000004594,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 2.7424670006439555,
+            "max_ms": 3.3996049969573505,
+            "stdev_ms": 0.2724714273067799,
+            "coefficient_of_variation": 0.08776044309249141
           },
-          "backend": "torch-cagra-chunk-hole",
-          "simulated": true,
-          "qps": 5220.63292016429
+          "backend": "cuvs-cagra-cuda",
+          "simulated": false,
+          "qps": 80704.0927522072
         },
         "MIRAGE": {
           "update_samples_ms": [
-            0.14209999994818645
+            6.215231001988286,
+            6.844621999334777,
+            6.674734002444893
           ],
           "query_samples_ms": [
-            0.6733000000167522
+            0.5254179995972663,
+            0.4249890007486101,
+            0.4380979989946354
           ],
           "recall10_samples": [
-            1.0
+            0.962109386920929,
+            0.9609375,
+            0.966015636920929
           ],
           "metadata": {
-            "backend": "torch-exact-cpu",
-            "simulated": true,
+            "backend": "faiss-mirage-cpu",
+            "simulated": false,
             "requested_device": "cuda",
             "effective_device": "cpu",
-            "fallback_reason": "ModuleNotFoundError: No module named 'faiss'",
+            "fallback_reason": null,
             "ntotal": 2304,
             "architecture": "cpu-hierarchical",
-            "cpu_threads": 20,
-            "threading": "PyTorch CPU thread pool",
-            "implementation_architecture": "exact-reference",
-            "version": null,
+            "cpu_threads": 14,
+            "threading": "native OpenMP",
+            "implementation_architecture": "cpu-hierarchical",
+            "version": "6749e9c",
+            "binding": "upstream-c-abi",
+            "library_path": "/root/mirage/build/libmirage_bridge.so",
             "native_algorithm": {
               "hierarchy": "multi-layer",
               "base_construction": "NN-Descent with RNG pruning",
               "incremental_update": "CPU multi-threaded add with RNG pruning",
               "gpu_enabled": false
             },
-            "native_parameters": null,
+            "native_parameters": {
+              "S": 32,
+              "R": 4,
+              "iter": 15
+            },
             "reference": "https://doi.org/10.1145/3725325",
             "definition": "Native CPU MIRAGE-ANNS or exact CPU reference; fallback does not implement MIRAGE hierarchy or model its performance."
           },
-          "update_ms": 0.14209999994818645,
+          "update_ms": 6.674734002444893,
           "update_sample_summary": {
-            "min_ms": 0.14209999994818645,
-            "max_ms": 0.14209999994818645,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 6.215231001988286,
+            "max_ms": 6.844621999334777,
+            "stdev_ms": 0.2658608588584746,
+            "coefficient_of_variation": 0.04041546835629953
           },
-          "query_ms": 0.6733000000167522,
-          "recall10": 1.0,
+          "query_ms": 0.4380979989946354,
+          "recall10": 0.9630208412806193,
           "query_sample_summary": {
-            "min_ms": 0.6733000000167522,
-            "max_ms": 0.6733000000167522,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 0.4249890007486101,
+            "max_ms": 0.5254179995972663,
+            "stdev_ms": 0.04457529478933014,
+            "coefficient_of_variation": 0.09630925666922714
           },
-          "backend": "torch-exact-cpu",
-          "simulated": true,
-          "qps": 380216.8424084814
+          "backend": "faiss-mirage-cpu",
+          "simulated": false,
+          "qps": 584344.14351921
         }
       }
     },
@@ -397,12 +493,18 @@
       "methods": {
         "Naive": {
           "update_samples_ms": [
-            11.005800000020827
+            7.41693099917029,
+            5.112030001328094,
+            8.963718999439152
           ],
           "query_samples_ms": [
-            68.37420000010752
+            48.54423299912014,
+            47.935997001332,
+            49.90558300050907
           ],
           "recall10_samples": [
+            0.9410156607627869,
+            0.9410156607627869,
             0.9410156607627869
           ],
           "metadata": {
@@ -415,33 +517,39 @@
             "architecture": "gpu-graph-insertion",
             "implementation_architecture": "pytorch-graph-model"
           },
-          "update_ms": 11.005800000020827,
+          "update_ms": 7.41693099917029,
           "update_sample_summary": {
-            "min_ms": 11.005800000020827,
-            "max_ms": 11.005800000020827,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 5.112030001328094,
+            "max_ms": 8.963718999439152,
+            "stdev_ms": 1.5825657741570407,
+            "coefficient_of_variation": 0.22089833945719753
           },
-          "query_ms": 68.37420000010752,
+          "query_ms": 48.54423299912014,
           "recall10": 0.9410156607627869,
           "query_sample_summary": {
-            "min_ms": 68.37420000010752,
-            "max_ms": 68.37420000010752,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 47.935997001332,
+            "max_ms": 49.90558300050907,
+            "stdev_ms": 0.8234408744504375,
+            "coefficient_of_variation": 0.016875423736145055
           },
           "backend": "torch-naive",
           "simulated": true,
-          "qps": 3744.1023075896674
+          "qps": 5273.540937491792
         },
         "ChunkSplice": {
           "update_samples_ms": [
-            16.24800000013238
+            9.105400000407826,
+            9.602787002222613,
+            9.24384100289899
           ],
           "query_samples_ms": [
-            53.048799999942275
+            48.61929599792347,
+            50.47712200030219,
+            50.2953270006401
           ],
           "recall10_samples": [
+            0.992968738079071,
+            0.992968738079071,
             0.992968738079071
           ],
           "metadata": {
@@ -454,165 +562,194 @@
             "architecture": "gpu-graph-insertion",
             "implementation_architecture": "pytorch-graph-model"
           },
-          "update_ms": 16.24800000013238,
+          "update_ms": 9.24384100289899,
           "update_sample_summary": {
-            "min_ms": 16.24800000013238,
-            "max_ms": 16.24800000013238,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 9.105400000407826,
+            "max_ms": 9.602787002222613,
+            "stdev_ms": 0.2096033214260518,
+            "coefficient_of_variation": 0.022496040865219693
           },
-          "query_ms": 53.048799999942275,
+          "query_ms": 50.2953270006401,
           "recall10": 0.992968738079071,
           "query_sample_summary": {
-            "min_ms": 53.048799999942275,
-            "max_ms": 53.048799999942275,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 48.61929599792347,
+            "max_ms": 50.47712200030219,
+            "stdev_ms": 0.8362380574854879,
+            "coefficient_of_variation": 0.01679285674369431
           },
           "backend": "torch-chunksplice",
           "simulated": true,
-          "qps": 4825.745351455237
+          "qps": 5089.936088828728
         },
         "FAISS-HNSW": {
           "update_samples_ms": [
-            0.15389999998660642
+            15.080483000929235,
+            15.379583001049468,
+            15.17877399965073
           ],
           "query_samples_ms": [
-            0.749199999972916
+            0.9981609982787631,
+            1.671349997195648,
+            0.9989040008804295
           ],
           "recall10_samples": [
-            1.0
+            0.9996094107627869,
+            0.9996094107627869,
+            0.9996094107627869
           ],
           "metadata": {
-            "backend": "torch-exact",
-            "simulated": true,
+            "backend": "faiss-hnsw-cpu",
+            "simulated": false,
             "requested_device": "cuda",
             "effective_device": "cpu",
-            "fallback_reason": "ModuleNotFoundError: No module named 'faiss'",
+            "fallback_reason": "FAISS HNSW has no native GPU implementation; using CPU HNSW",
             "ntotal": 2560,
             "architecture": "cpu-hierarchical",
-            "cpu_threads": 20,
-            "threading": "PyTorch CPU thread pool",
-            "implementation_architecture": "exact-reference",
-            "version": null,
+            "cpu_threads": 14,
+            "threading": "native OpenMP",
+            "implementation_architecture": "cpu-hierarchical",
+            "version": "1.15.1",
             "m": 32,
             "ef_construction": 80,
             "ef_search": 64,
             "definition": "Native CPU HNSW or exact reference; fallback is not an HNSW performance model."
           },
-          "update_ms": 0.15389999998660642,
+          "update_ms": 15.17877399965073,
           "update_sample_summary": {
-            "min_ms": 0.15389999998660642,
-            "max_ms": 0.15389999998660642,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 15.080483000929235,
+            "max_ms": 15.379583001049468,
+            "stdev_ms": 0.12447497987964906,
+            "coefficient_of_variation": 0.008182174210072272
           },
-          "query_ms": 0.749199999972916,
-          "recall10": 1.0,
+          "query_ms": 0.9989040008804295,
+          "recall10": 0.9996094107627869,
           "query_sample_summary": {
-            "min_ms": 0.749199999972916,
-            "max_ms": 0.749199999972916,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 0.9981609982787631,
+            "max_ms": 1.671349997195648,
+            "stdev_ms": 0.3171693550903664,
+            "coefficient_of_variation": 0.25937852348127877
           },
-          "backend": "torch-exact",
-          "simulated": true,
-          "qps": 341697.8110107509
+          "backend": "faiss-hnsw-cpu",
+          "simulated": false,
+          "qps": 256280.88362281336
         },
         "cuVS-CAGRA": {
           "update_samples_ms": [
-            4.8311000000467175
+            5.663200001436053,
+            13.057277999905637,
+            5.806007997307461
           ],
           "query_samples_ms": [
-            71.0204000001795
+            3.4858500002883375,
+            2.995971000927966,
+            3.6302529988461174
           ],
           "recall10_samples": [
-            0.9410156607627869
+            0.998828113079071,
+            0.998828113079071,
+            0.998828113079071
           ],
           "metadata": {
-            "backend": "torch-cagra-chunk-hole",
-            "simulated": true,
+            "backend": "cuvs-cagra-cuda",
+            "simulated": false,
             "requested_device": "cuda",
             "effective_device": "cuda",
-            "fallback_reason": "ModuleNotFoundError: No module named 'cupy'",
+            "fallback_reason": null,
             "ntotal": 2560,
-            "version": null,
+            "version": "26.10.00",
             "architecture": "gpu-graph-insertion",
-            "implementation_architecture": "pytorch-graph-model",
+            "implementation_architecture": "native-gpu-graph",
             "graph_degree": 24,
             "max_chunk_size": 256,
-            "extend_api": null,
+            "search_parameters": {
+              "itopk_size": 64,
+              "search_width": 4,
+              "max_iterations": 16
+            },
+            "extend_api": "concatenated",
             "definition": "Native cuVS extension or PyTorch snapshot-insertion mechanism simulator."
           },
-          "update_ms": 4.8311000000467175,
+          "update_ms": 5.806007997307461,
           "update_sample_summary": {
-            "min_ms": 4.8311000000467175,
-            "max_ms": 4.8311000000467175,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 5.663200001436053,
+            "max_ms": 13.057277999905637,
+            "stdev_ms": 3.452433927627756,
+            "coefficient_of_variation": 0.42229048969565874
           },
-          "query_ms": 71.0204000001795,
-          "recall10": 0.9410156607627869,
+          "query_ms": 3.4858500002883375,
+          "recall10": 0.998828113079071,
           "query_sample_summary": {
-            "min_ms": 71.0204000001795,
-            "max_ms": 71.0204000001795,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 2.995971000927966,
+            "max_ms": 3.6302529988461174,
+            "stdev_ms": 0.27144619128942965,
+            "coefficient_of_variation": 0.08053131077395816
           },
-          "backend": "torch-cagra-chunk-hole",
-          "simulated": true,
-          "qps": 3604.598115461937
+          "backend": "cuvs-cagra-cuda",
+          "simulated": false,
+          "qps": 73439.76360968618
         },
         "MIRAGE": {
           "update_samples_ms": [
-            0.21629999992001103
+            6.730729000992142,
+            6.651823001448065,
+            6.3437190001423005
           ],
           "query_samples_ms": [
-            1.029399999879388
+            0.5736940001952462,
+            0.5878500014659949,
+            0.8253849991888274
           ],
           "recall10_samples": [
-            1.0
+            0.9671875238418579,
+            0.964062511920929,
+            0.9632812738418579
           ],
           "metadata": {
-            "backend": "torch-exact-cpu",
-            "simulated": true,
+            "backend": "faiss-mirage-cpu",
+            "simulated": false,
             "requested_device": "cuda",
             "effective_device": "cpu",
-            "fallback_reason": "ModuleNotFoundError: No module named 'faiss'",
+            "fallback_reason": null,
             "ntotal": 2560,
             "architecture": "cpu-hierarchical",
-            "cpu_threads": 20,
-            "threading": "PyTorch CPU thread pool",
-            "implementation_architecture": "exact-reference",
-            "version": null,
+            "cpu_threads": 14,
+            "threading": "native OpenMP",
+            "implementation_architecture": "cpu-hierarchical",
+            "version": "6749e9c",
+            "binding": "upstream-c-abi",
+            "library_path": "/root/mirage/build/libmirage_bridge.so",
             "native_algorithm": {
               "hierarchy": "multi-layer",
               "base_construction": "NN-Descent with RNG pruning",
               "incremental_update": "CPU multi-threaded add with RNG pruning",
               "gpu_enabled": false
             },
-            "native_parameters": null,
+            "native_parameters": {
+              "S": 32,
+              "R": 4,
+              "iter": 15
+            },
             "reference": "https://doi.org/10.1145/3725325",
             "definition": "Native CPU MIRAGE-ANNS or exact CPU reference; fallback does not implement MIRAGE hierarchy or model its performance."
           },
-          "update_ms": 0.21629999992001103,
+          "update_ms": 6.651823001448065,
           "update_sample_summary": {
-            "min_ms": 0.21629999992001103,
-            "max_ms": 0.21629999992001103,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 6.3437190001423005,
+            "max_ms": 6.730729000992142,
+            "stdev_ms": 0.1669767026804992,
+            "coefficient_of_variation": 0.025394059930329317
           },
-          "query_ms": 1.029399999879388,
-          "recall10": 1.0,
+          "query_ms": 0.5878500014659949,
+          "recall10": 0.964843769868215,
           "query_sample_summary": {
-            "min_ms": 1.029399999879388,
-            "max_ms": 1.029399999879388,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 0.5736940001952462,
+            "max_ms": 0.8253849991888274,
+            "stdev_ms": 0.11545640181930644,
+            "coefficient_of_variation": 0.17432389648031313
           },
-          "backend": "torch-exact-cpu",
-          "simulated": true,
-          "qps": 248688.55646978322
+          "backend": "faiss-mirage-cpu",
+          "simulated": false,
+          "qps": 435485.24174803245
         }
       }
     },
@@ -622,12 +759,18 @@
       "methods": {
         "Naive": {
           "update_samples_ms": [
-            12.226699999928314
+            7.43282899929909,
+            8.048743002291303,
+            5.914785000641132
           ],
           "query_samples_ms": [
-            100.77759999990121
+            49.42860200026189,
+            51.8226770000183,
+            48.76272500041523
           ],
           "recall10_samples": [
+            0.918749988079071,
+            0.918749988079071,
             0.918749988079071
           ],
           "metadata": {
@@ -640,33 +783,39 @@
             "architecture": "gpu-graph-insertion",
             "implementation_architecture": "pytorch-graph-model"
           },
-          "update_ms": 12.226699999928314,
+          "update_ms": 7.43282899929909,
           "update_sample_summary": {
-            "min_ms": 12.226699999928314,
-            "max_ms": 12.226699999928314,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 5.914785000641132,
+            "max_ms": 8.048743002291303,
+            "stdev_ms": 0.8967586318235327,
+            "coefficient_of_variation": 0.12573523124474023
           },
-          "query_ms": 100.77759999990121,
+          "query_ms": 49.42860200026189,
           "recall10": 0.918749988079071,
           "query_sample_summary": {
-            "min_ms": 100.77759999990121,
-            "max_ms": 100.77759999990121,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 48.76272500041523,
+            "max_ms": 51.8226770000183,
+            "stdev_ms": 1.3139547397607767,
+            "coefficient_of_variation": 0.026276641607833204
           },
           "backend": "torch-naive",
           "simulated": true,
-          "qps": 2540.247039027035
+          "qps": 5179.187548105116
         },
         "ChunkSplice": {
           "update_samples_ms": [
-            24.107899999989968
+            9.929425999871455,
+            10.375724999903468,
+            10.416893997899024
           ],
           "query_samples_ms": [
-            100.22749999984626
+            56.29740799849969,
+            49.53225499775726,
+            50.27006000091205
           ],
           "recall10_samples": [
+            0.984375,
+            0.984375,
             0.984375
           ],
           "metadata": {
@@ -679,165 +828,194 @@
             "architecture": "gpu-graph-insertion",
             "implementation_architecture": "pytorch-graph-model"
           },
-          "update_ms": 24.107899999989968,
+          "update_ms": 10.375724999903468,
           "update_sample_summary": {
-            "min_ms": 24.107899999989968,
-            "max_ms": 24.107899999989968,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 9.929425999871455,
+            "max_ms": 10.416893997899024,
+            "stdev_ms": 0.22073179626126938,
+            "coefficient_of_variation": 0.021554404624885642
           },
-          "query_ms": 100.22749999984626,
+          "query_ms": 50.27006000091205,
           "recall10": 0.984375,
           "query_sample_summary": {
-            "min_ms": 100.22749999984626,
-            "max_ms": 100.22749999984626,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 49.53225499775726,
+            "max_ms": 56.29740799849969,
+            "stdev_ms": 3.03022872679345,
+            "coefficient_of_variation": 0.05823640174265534
           },
           "backend": "torch-chunksplice",
           "simulated": true,
-          "qps": 2554.189219529497
+          "qps": 5092.4944190509295
         },
         "FAISS-HNSW": {
           "update_samples_ms": [
-            0.5326999998942483
+            18.716085000050953,
+            16.357479002181208,
+            15.516509000008227
           ],
           "query_samples_ms": [
-            1.7276000000947533
+            1.0643839996191673,
+            1.1710609978763387,
+            1.210432998050237
           ],
           "recall10_samples": [
-            1.0
+            0.999218761920929,
+            0.999218761920929,
+            0.999218761920929
           ],
           "metadata": {
-            "backend": "torch-exact",
-            "simulated": true,
+            "backend": "faiss-hnsw-cpu",
+            "simulated": false,
             "requested_device": "cuda",
             "effective_device": "cpu",
-            "fallback_reason": "ModuleNotFoundError: No module named 'faiss'",
+            "fallback_reason": "FAISS HNSW has no native GPU implementation; using CPU HNSW",
             "ntotal": 2816,
             "architecture": "cpu-hierarchical",
-            "cpu_threads": 20,
-            "threading": "PyTorch CPU thread pool",
-            "implementation_architecture": "exact-reference",
-            "version": null,
+            "cpu_threads": 14,
+            "threading": "native OpenMP",
+            "implementation_architecture": "cpu-hierarchical",
+            "version": "1.15.1",
             "m": 32,
             "ef_construction": 80,
             "ef_search": 64,
             "definition": "Native CPU HNSW or exact reference; fallback is not an HNSW performance model."
           },
-          "update_ms": 0.5326999998942483,
+          "update_ms": 16.357479002181208,
           "update_sample_summary": {
-            "min_ms": 0.5326999998942483,
-            "max_ms": 0.5326999998942483,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 15.516509000008227,
+            "max_ms": 18.716085000050953,
+            "stdev_ms": 1.3543157098611898,
+            "coefficient_of_variation": 0.08031115371989364
           },
-          "query_ms": 1.7276000000947533,
-          "recall10": 1.0,
+          "query_ms": 1.1710609978763387,
+          "recall10": 0.999218761920929,
           "query_sample_summary": {
-            "min_ms": 1.7276000000947533,
-            "max_ms": 1.7276000000947533,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 1.0643839996191673,
+            "max_ms": 1.210432998050237,
+            "stdev_ms": 0.06169859200407937,
+            "coefficient_of_variation": 0.05371512753832234
           },
-          "backend": "torch-exact",
-          "simulated": true,
-          "qps": 148182.4496329933
+          "backend": "faiss-hnsw-cpu",
+          "simulated": false,
+          "qps": 218605.17980211394
         },
         "cuVS-CAGRA": {
           "update_samples_ms": [
-            11.96780000009312
+            10.067813000205206,
+            5.491651001648279,
+            5.293875001370907
           ],
           "query_samples_ms": [
-            99.9735000000328
+            2.598442999442341,
+            3.319362000183901,
+            2.452888998959679
           ],
           "recall10_samples": [
-            0.918749988079071
+            0.999218761920929,
+            0.9984375238418579,
+            0.9996094107627869
           ],
           "metadata": {
-            "backend": "torch-cagra-chunk-hole",
-            "simulated": true,
+            "backend": "cuvs-cagra-cuda",
+            "simulated": false,
             "requested_device": "cuda",
             "effective_device": "cuda",
-            "fallback_reason": "ModuleNotFoundError: No module named 'cupy'",
+            "fallback_reason": null,
             "ntotal": 2816,
-            "version": null,
+            "version": "26.10.00",
             "architecture": "gpu-graph-insertion",
-            "implementation_architecture": "pytorch-graph-model",
+            "implementation_architecture": "native-gpu-graph",
             "graph_degree": 24,
             "max_chunk_size": 256,
-            "extend_api": null,
+            "search_parameters": {
+              "itopk_size": 64,
+              "search_width": 4,
+              "max_iterations": 16
+            },
+            "extend_api": "concatenated",
             "definition": "Native cuVS extension or PyTorch snapshot-insertion mechanism simulator."
           },
-          "update_ms": 11.96780000009312,
+          "update_ms": 5.491651001648279,
           "update_sample_summary": {
-            "min_ms": 11.96780000009312,
-            "max_ms": 11.96780000009312,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 5.293875001370907,
+            "max_ms": 10.067813000205206,
+            "stdev_ms": 2.2053182687926696,
+            "coefficient_of_variation": 0.31726117363531253
           },
-          "query_ms": 99.9735000000328,
-          "recall10": 0.918749988079071,
+          "query_ms": 2.598442999442341,
+          "recall10": 0.9990885655085245,
           "query_sample_summary": {
-            "min_ms": 99.9735000000328,
-            "max_ms": 99.9735000000328,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 2.452888998959679,
+            "max_ms": 3.319362000183901,
+            "stdev_ms": 0.3788411620451133,
+            "coefficient_of_variation": 0.13577410502968276
           },
-          "backend": "torch-cagra-chunk-hole",
-          "simulated": true,
-          "qps": 2560.678579822813
+          "backend": "cuvs-cagra-cuda",
+          "simulated": false,
+          "qps": 98520.53712740318
         },
         "MIRAGE": {
           "update_samples_ms": [
-            0.6634999999732827
+            8.020313998713391,
+            7.192018001660472,
+            7.604325001011603
           ],
           "query_samples_ms": [
-            1.9317000001137785
+            0.49722699986887164,
+            0.7999230001587421,
+            0.8855349988152739
           ],
           "recall10_samples": [
-            1.0
+            0.971484363079071,
+            0.971484363079071,
+            0.969921886920929
           ],
           "metadata": {
-            "backend": "torch-exact-cpu",
-            "simulated": true,
+            "backend": "faiss-mirage-cpu",
+            "simulated": false,
             "requested_device": "cuda",
             "effective_device": "cpu",
-            "fallback_reason": "ModuleNotFoundError: No module named 'faiss'",
+            "fallback_reason": null,
             "ntotal": 2816,
             "architecture": "cpu-hierarchical",
-            "cpu_threads": 20,
-            "threading": "PyTorch CPU thread pool",
-            "implementation_architecture": "exact-reference",
-            "version": null,
+            "cpu_threads": 14,
+            "threading": "native OpenMP",
+            "implementation_architecture": "cpu-hierarchical",
+            "version": "6749e9c",
+            "binding": "upstream-c-abi",
+            "library_path": "/root/mirage/build/libmirage_bridge.so",
             "native_algorithm": {
               "hierarchy": "multi-layer",
               "base_construction": "NN-Descent with RNG pruning",
               "incremental_update": "CPU multi-threaded add with RNG pruning",
               "gpu_enabled": false
             },
-            "native_parameters": null,
+            "native_parameters": {
+              "S": 32,
+              "R": 4,
+              "iter": 15
+            },
             "reference": "https://doi.org/10.1145/3725325",
             "definition": "Native CPU MIRAGE-ANNS or exact CPU reference; fallback does not implement MIRAGE hierarchy or model its performance."
           },
-          "update_ms": 0.6634999999732827,
+          "update_ms": 7.604325001011603,
           "update_sample_summary": {
-            "min_ms": 0.6634999999732827,
-            "max_ms": 0.6634999999732827,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 7.192018001660472,
+            "max_ms": 8.020313998713391,
+            "stdev_ms": 0.3381515384585177,
+            "coefficient_of_variation": 0.04446114149474017
           },
-          "query_ms": 1.9317000001137785,
-          "recall10": 1.0,
+          "query_ms": 0.7999230001587421,
+          "recall10": 0.9709635376930237,
           "query_sample_summary": {
-            "min_ms": 1.9317000001137785,
-            "max_ms": 1.9317000001137785,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 0.49722699986887164,
+            "max_ms": 0.8855349988152739,
+            "stdev_ms": 0.1665791053160998,
+            "coefficient_of_variation": 0.22895530789519625
           },
-          "backend": "torch-exact-cpu",
-          "simulated": true,
-          "qps": 132525.75450894106
+          "backend": "faiss-mirage-cpu",
+          "simulated": false,
+          "qps": 320030.8029012763
         }
       }
     },
@@ -847,12 +1025,18 @@
       "methods": {
         "Naive": {
           "update_samples_ms": [
-            13.682500000186337
+            9.092727999814088,
+            6.653923999692779,
+            5.663609998009633
           ],
           "query_samples_ms": [
-            100.62010000001465
+            49.084015998232644,
+            50.163831998361275,
+            50.75840000063181
           ],
           "recall10_samples": [
+            0.9183593988418579,
+            0.9183593988418579,
             0.9183593988418579
           ],
           "metadata": {
@@ -865,33 +1049,39 @@
             "architecture": "gpu-graph-insertion",
             "implementation_architecture": "pytorch-graph-model"
           },
-          "update_ms": 13.682500000186337,
+          "update_ms": 6.653923999692779,
           "update_sample_summary": {
-            "min_ms": 13.682500000186337,
-            "max_ms": 13.682500000186337,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 5.663609998009633,
+            "max_ms": 9.092727999814088,
+            "stdev_ms": 1.4409617561135555,
+            "coefficient_of_variation": 0.2019071634360244
           },
-          "query_ms": 100.62010000001465,
+          "query_ms": 50.163831998361275,
           "recall10": 0.9183593988418579,
           "query_sample_summary": {
-            "min_ms": 100.62010000001465,
-            "max_ms": 100.62010000001465,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 49.084015998232644,
+            "max_ms": 50.75840000063181,
+            "stdev_ms": 0.6930668951958724,
+            "coefficient_of_variation": 0.013860760557294058
           },
           "backend": "torch-naive",
           "simulated": true,
-          "qps": 2544.2232714930988
+          "qps": 5103.278394050177
         },
         "ChunkSplice": {
           "update_samples_ms": [
-            25.248099999998885
+            10.632434998115059,
+            10.479350999958115,
+            17.256862000067485
           ],
           "query_samples_ms": [
-            100.3537999999935
+            49.78071500227088,
+            51.987263999762945,
+            51.06328499823576
           ],
           "recall10_samples": [
+            0.975390613079071,
+            0.975390613079071,
             0.975390613079071
           ],
           "metadata": {
@@ -904,177 +1094,217 @@
             "architecture": "gpu-graph-insertion",
             "implementation_architecture": "pytorch-graph-model"
           },
-          "update_ms": 25.248099999998885,
+          "update_ms": 10.632434998115059,
           "update_sample_summary": {
-            "min_ms": 25.248099999998885,
-            "max_ms": 25.248099999998885,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 10.479350999958115,
+            "max_ms": 17.256862000067485,
+            "stdev_ms": 3.1594852458956675,
+            "coefficient_of_variation": 0.24703647984016344
           },
-          "query_ms": 100.3537999999935,
+          "query_ms": 51.06328499823576,
           "recall10": 0.975390613079071,
           "query_sample_summary": {
-            "min_ms": 100.3537999999935,
-            "max_ms": 100.3537999999935,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 49.78071500227088,
+            "max_ms": 51.987263999762945,
+            "stdev_ms": 0.9047763055735412,
+            "coefficient_of_variation": 0.017760298813702384
           },
           "backend": "torch-chunksplice",
           "simulated": true,
-          "qps": 2550.974651682513
+          "qps": 5013.386820077181
         },
         "FAISS-HNSW": {
           "update_samples_ms": [
-            0.5034000000705419
+            17.700364001939306,
+            11.266714998782845,
+            13.734186002693605
           ],
           "query_samples_ms": [
-            1.918100000011691
+            1.0398739977972582,
+            0.8851459970173892,
+            1.0041929999715649
           ],
           "recall10_samples": [
-            1.0
+            0.9957031607627869,
+            0.9957031607627869,
+            0.9957031607627869
           ],
           "metadata": {
-            "backend": "torch-exact",
-            "simulated": true,
+            "backend": "faiss-hnsw-cpu",
+            "simulated": false,
             "requested_device": "cuda",
             "effective_device": "cpu",
-            "fallback_reason": "ModuleNotFoundError: No module named 'faiss'",
+            "fallback_reason": "FAISS HNSW has no native GPU implementation; using CPU HNSW",
             "ntotal": 3072,
             "architecture": "cpu-hierarchical",
-            "cpu_threads": 20,
-            "threading": "PyTorch CPU thread pool",
-            "implementation_architecture": "exact-reference",
-            "version": null,
+            "cpu_threads": 14,
+            "threading": "native OpenMP",
+            "implementation_architecture": "cpu-hierarchical",
+            "version": "1.15.1",
             "m": 32,
             "ef_construction": 80,
             "ef_search": 64,
             "definition": "Native CPU HNSW or exact reference; fallback is not an HNSW performance model."
           },
-          "update_ms": 0.5034000000705419,
+          "update_ms": 13.734186002693605,
           "update_sample_summary": {
-            "min_ms": 0.5034000000705419,
-            "max_ms": 0.5034000000705419,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 11.266714998782845,
+            "max_ms": 17.700364001939306,
+            "stdev_ms": 2.6501744297447694,
+            "coefficient_of_variation": 0.18618940887578694
           },
-          "query_ms": 1.918100000011691,
-          "recall10": 1.0,
+          "query_ms": 1.0041929999715649,
+          "recall10": 0.9957031607627869,
           "query_sample_summary": {
-            "min_ms": 1.918100000011691,
-            "max_ms": 1.918100000011691,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 0.8851459970173892,
+            "max_ms": 1.0398739977972582,
+            "stdev_ms": 0.0661530857124794,
+            "coefficient_of_variation": 0.06775173314152345
           },
-          "backend": "torch-exact",
-          "simulated": true,
-          "qps": 133465.40847632536
+          "backend": "faiss-hnsw-cpu",
+          "simulated": false,
+          "qps": 254931.07401390868
         },
         "cuVS-CAGRA": {
           "update_samples_ms": [
-            13.413000000127795
+            5.319371997757116,
+            4.8487999993085396,
+            5.505550001544179
           ],
           "query_samples_ms": [
-            101.45299999999224
+            3.1063339993124828,
+            3.28587200056063,
+            3.0490610006381758
           ],
           "recall10_samples": [
-            0.9183593988418579
+            0.996874988079071,
+            0.994140625,
+            0.996874988079071
           ],
           "metadata": {
-            "backend": "torch-cagra-chunk-hole",
-            "simulated": true,
+            "backend": "cuvs-cagra-cuda",
+            "simulated": false,
             "requested_device": "cuda",
             "effective_device": "cuda",
-            "fallback_reason": "ModuleNotFoundError: No module named 'cupy'",
+            "fallback_reason": null,
             "ntotal": 3072,
-            "version": null,
+            "version": "26.10.00",
             "architecture": "gpu-graph-insertion",
-            "implementation_architecture": "pytorch-graph-model",
+            "implementation_architecture": "native-gpu-graph",
             "graph_degree": 24,
             "max_chunk_size": 256,
-            "extend_api": null,
+            "search_parameters": {
+              "itopk_size": 64,
+              "search_width": 4,
+              "max_iterations": 16
+            },
+            "extend_api": "concatenated",
             "definition": "Native cuVS extension or PyTorch snapshot-insertion mechanism simulator."
           },
-          "update_ms": 13.413000000127795,
+          "update_ms": 5.319371997757116,
           "update_sample_summary": {
-            "min_ms": 13.413000000127795,
-            "max_ms": 13.413000000127795,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 4.8487999993085396,
+            "max_ms": 5.505550001544179,
+            "stdev_ms": 0.2763694830103224,
+            "coefficient_of_variation": 0.05289799379525195
           },
-          "query_ms": 101.45299999999224,
-          "recall10": 0.9183593988418579,
+          "query_ms": 3.1063339993124828,
+          "recall10": 0.9959635337193807,
           "query_sample_summary": {
-            "min_ms": 101.45299999999224,
-            "max_ms": 101.45299999999224,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 3.0490610006381758,
+            "max_ms": 3.28587200056063,
+            "stdev_ms": 0.10088141550773562,
+            "coefficient_of_variation": 0.03205546951556579
           },
-          "backend": "torch-cagra-chunk-hole",
-          "simulated": true,
-          "qps": 2523.3359289525156
+          "backend": "cuvs-cagra-cuda",
+          "simulated": false,
+          "qps": 82412.25832658686
         },
         "MIRAGE": {
           "update_samples_ms": [
-            0.19940000015594705
+            7.601489996886812,
+            6.866628998977831,
+            6.807042998843826
           ],
           "query_samples_ms": [
-            1.7505000000710425
+            0.7295670002349652,
+            0.6122760023572482,
+            0.5139910026628058
           ],
           "recall10_samples": [
-            1.0
+            0.969531238079071,
+            0.9691406488418579,
+            0.973437488079071
           ],
           "metadata": {
-            "backend": "torch-exact-cpu",
-            "simulated": true,
+            "backend": "faiss-mirage-cpu",
+            "simulated": false,
             "requested_device": "cuda",
             "effective_device": "cpu",
-            "fallback_reason": "ModuleNotFoundError: No module named 'faiss'",
+            "fallback_reason": null,
             "ntotal": 3072,
             "architecture": "cpu-hierarchical",
-            "cpu_threads": 20,
-            "threading": "PyTorch CPU thread pool",
-            "implementation_architecture": "exact-reference",
-            "version": null,
+            "cpu_threads": 14,
+            "threading": "native OpenMP",
+            "implementation_architecture": "cpu-hierarchical",
+            "version": "6749e9c",
+            "binding": "upstream-c-abi",
+            "library_path": "/root/mirage/build/libmirage_bridge.so",
             "native_algorithm": {
               "hierarchy": "multi-layer",
               "base_construction": "NN-Descent with RNG pruning",
               "incremental_update": "CPU multi-threaded add with RNG pruning",
               "gpu_enabled": false
             },
-            "native_parameters": null,
+            "native_parameters": {
+              "S": 32,
+              "R": 4,
+              "iter": 15
+            },
             "reference": "https://doi.org/10.1145/3725325",
             "definition": "Native CPU MIRAGE-ANNS or exact CPU reference; fallback does not implement MIRAGE hierarchy or model its performance."
           },
-          "update_ms": 0.19940000015594705,
+          "update_ms": 6.866628998977831,
           "update_sample_summary": {
-            "min_ms": 0.19940000015594705,
-            "max_ms": 0.19940000015594705,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 6.807042998843826,
+            "max_ms": 7.601489996886812,
+            "stdev_ms": 0.3612812401500566,
+            "coefficient_of_variation": 0.050944087792127835
           },
-          "query_ms": 1.7505000000710425,
-          "recall10": 1.0,
+          "query_ms": 0.6122760023572482,
+          "recall10": 0.970703125,
           "query_sample_summary": {
-            "min_ms": 1.7505000000710425,
-            "max_ms": 1.7505000000710425,
-            "stdev_ms": 0.0,
-            "coefficient_of_variation": 0.0
+            "min_ms": 0.5139910026628058,
+            "max_ms": 0.7295670002349652,
+            "stdev_ms": 0.08812247164367884,
+            "coefficient_of_variation": 0.14245208040290677
           },
-          "backend": "torch-exact-cpu",
-          "simulated": true,
-          "qps": 146243.9302996918
+          "backend": "faiss-mirage-cpu",
+          "simulated": false,
+          "qps": 418112.09162927506
         }
       }
     }
   ],
+  "dataset": {
+    "requested": "synthetic",
+    "actual": "synthetic",
+    "synthetic": true,
+    "rows": 3072,
+    "dimension": 32,
+    "seed": 42,
+    "metric": "squared_l2"
+  },
   "summary": {
     "Naive": {
-      "update_ms": 10.51480000006677,
+      "update_ms": 6.500646499262075,
       "total_update_samples_ms": [
-        42.05920000026708
+        29.20737899694359,
+        24.977733002742752,
+        26.0025859970483
       ],
       "recall10": 0.9183593988418579,
-      "qps": 2544.2232714930988,
+      "qps": 5103.278394050177,
       "backend": "torch-naive",
       "simulated": true,
       "metadata": {
@@ -1089,12 +1319,14 @@
       }
     },
     "ChunkSplice": {
-      "update_ms": 18.676975000062157,
+      "update_ms": 10.626298249917454,
       "total_update_samples_ms": [
-        74.70790000024863
+        42.505192999669816,
+        39.19099600170739,
+        45.637119001185056
       ],
       "recall10": 0.975390613079071,
-      "qps": 2550.974651682513,
+      "qps": 5013.386820077181,
       "backend": "torch-chunksplice",
       "simulated": true,
       "metadata": {
@@ -1109,26 +1341,28 @@
       }
     },
     "FAISS-HNSW": {
-      "update_ms": 0.3300000000194814,
+      "update_ms": 13.999516750118346,
       "total_update_samples_ms": [
-        1.3200000000779255
+        67.14554500285885,
+        50.58255400217604,
+        55.998067000473384
       ],
-      "recall10": 1.0,
-      "qps": 133465.40847632536,
-      "backend": "torch-exact",
-      "simulated": true,
+      "recall10": 0.9957031607627869,
+      "qps": 254931.07401390868,
+      "backend": "faiss-hnsw-cpu",
+      "simulated": false,
       "metadata": {
-        "backend": "torch-exact",
-        "simulated": true,
+        "backend": "faiss-hnsw-cpu",
+        "simulated": false,
         "requested_device": "cuda",
         "effective_device": "cpu",
-        "fallback_reason": "ModuleNotFoundError: No module named 'faiss'",
+        "fallback_reason": "FAISS HNSW has no native GPU implementation; using CPU HNSW",
         "ntotal": 3072,
         "architecture": "cpu-hierarchical",
-        "cpu_threads": 20,
-        "threading": "PyTorch CPU thread pool",
-        "implementation_architecture": "exact-reference",
-        "version": null,
+        "cpu_threads": 14,
+        "threading": "native OpenMP",
+        "implementation_architecture": "cpu-hierarchical",
+        "version": "1.15.1",
         "m": 32,
         "ef_construction": 80,
         "ef_search": 64,
@@ -1136,65 +1370,87 @@
       }
     },
     "cuVS-CAGRA": {
-      "update_ms": 8.696250000070904,
+      "update_ms": 6.495410249044653,
       "total_update_samples_ms": [
-        34.78500000028362
+        25.981640996178612,
+        28.568073001224548,
+        22.16213700012304
       ],
-      "recall10": 0.9183593988418579,
-      "qps": 2523.3359289525156,
-      "backend": "torch-cagra-chunk-hole",
-      "simulated": true,
+      "recall10": 0.9959635337193807,
+      "qps": 82412.25832658686,
+      "backend": "cuvs-cagra-cuda",
+      "simulated": false,
       "metadata": {
-        "backend": "torch-cagra-chunk-hole",
-        "simulated": true,
+        "backend": "cuvs-cagra-cuda",
+        "simulated": false,
         "requested_device": "cuda",
         "effective_device": "cuda",
-        "fallback_reason": "ModuleNotFoundError: No module named 'cupy'",
+        "fallback_reason": null,
         "ntotal": 3072,
-        "version": null,
+        "version": "26.10.00",
         "architecture": "gpu-graph-insertion",
-        "implementation_architecture": "pytorch-graph-model",
+        "implementation_architecture": "native-gpu-graph",
         "graph_degree": 24,
         "max_chunk_size": 256,
-        "extend_api": null,
+        "search_parameters": {
+          "itopk_size": 64,
+          "search_width": 4,
+          "max_iterations": 16
+        },
+        "extend_api": "concatenated",
         "definition": "Native cuVS extension or PyTorch snapshot-insertion mechanism simulator."
       }
     },
     "MIRAGE": {
-      "update_ms": 0.3053249999993568,
+      "update_ms": 6.888773000355286,
       "total_update_samples_ms": [
-        1.2212999999974272
+        28.56776399858063,
+        27.555092001421144,
+        27.429821002442623
       ],
-      "recall10": 1.0,
-      "qps": 146243.9302996918,
-      "backend": "torch-exact-cpu",
-      "simulated": true,
+      "recall10": 0.970703125,
+      "qps": 418112.09162927506,
+      "backend": "faiss-mirage-cpu",
+      "simulated": false,
       "metadata": {
-        "backend": "torch-exact-cpu",
-        "simulated": true,
+        "backend": "faiss-mirage-cpu",
+        "simulated": false,
         "requested_device": "cuda",
         "effective_device": "cpu",
-        "fallback_reason": "ModuleNotFoundError: No module named 'faiss'",
+        "fallback_reason": null,
         "ntotal": 3072,
         "architecture": "cpu-hierarchical",
-        "cpu_threads": 20,
-        "threading": "PyTorch CPU thread pool",
-        "implementation_architecture": "exact-reference",
-        "version": null,
+        "cpu_threads": 14,
+        "threading": "native OpenMP",
+        "implementation_architecture": "cpu-hierarchical",
+        "version": "6749e9c",
+        "binding": "upstream-c-abi",
+        "library_path": "/root/mirage/build/libmirage_bridge.so",
         "native_algorithm": {
           "hierarchy": "multi-layer",
           "base_construction": "NN-Descent with RNG pruning",
           "incremental_update": "CPU multi-threaded add with RNG pruning",
           "gpu_enabled": false
         },
-        "native_parameters": null,
+        "native_parameters": {
+          "S": 32,
+          "R": 4,
+          "iter": 15
+        },
         "reference": "https://doi.org/10.1145/3725325",
         "definition": "Native CPU MIRAGE-ANNS or exact CPU reference; fallback does not implement MIRAGE hierarchy or model its performance."
       }
     }
   },
-  "native_external_comparison_complete": false,
+  "native_external_comparison_complete": true,
+  "simulated": false,
+  "simulated_scope": "external backends only; Naive/ChunkSplice remain PyTorch models",
   "benchmark_completed": true,
-  "completed_at_utc": "2026-10-20T08:03:46.630030+00:00",
-  "peak_cuda_allocated_mb": 21.443359375
+  "completed_at_utc": "2026-10-22T14:36:25.590272+00:00",
+  "peak_cuda_allocated_mb": 20.505859375,
+  "promotion_gate": {
+    "passed": true,
+    "scope": "native backend validation; not evidence of superiority",
+    "academic_dataset": false
+  }
 }

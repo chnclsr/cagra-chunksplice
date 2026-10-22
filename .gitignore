@@ -1,6 +1,8 @@
 __pycache__/
 *.pyc
 _*.py
+!**/__init__.py
+!**/__main__.py
 _*.txt
 _*.png
 _*.json
