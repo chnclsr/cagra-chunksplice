@@ -2,6 +2,19 @@
 
 **A controlled PyTorch study of intra-chunk connectivity in incremental proximity graphs.**
 
+## Executive Summary: What ChunkSplice Solves & Achieves
+
+![ChunkSplice Performance and Graph Health Summary](docs/assets/results_comparison.svg)
+
+> **In a nutshell:** Standard incremental graph insertion ("Naive") leaves incoming vector batches internally disconnected, causing severe **orphan influx** (up to 13.5% unreachable vectors) and **recall degradation** (newest-chunk recall stuck at ~88%). **ChunkSplice** introduces degree-budget partitioning ($R_{bridge} + R_{intra}$) combined with cohort-local Relative Neighborhood Graph (RNG) pruning. It lifts newest-chunk recall to **99.9%**, virtually eliminates unreachable orphan nodes (**138 → 2**), and executes updates **~10x faster** than 2-hop graph repair baselines.
+
+### Key Highlights at a Glance
+
+* **Instant Findability (+11.6% Recall@10):** In the 4-update streaming benchmark (n = 3072 on an RTX 4070 SUPER), newest-chunk Recall@10 surges from **0.883** (Naive) to **0.999** (ChunkSplice), while cumulative inserted-cohort recall reaches **1.000**.
+* **Elimination of Orphan Vectors (-98.5% Unreachables):** In-degree 0 (orphan) nodes collapse from **138** down to **2**, raising directed anchor reachability from **86.5%** to **99.8%**.
+* **10x Faster Than Graph Repair (LocalRNG):** Matches or exceeds 2-hop repair recall for initial updates at a fraction of the cost (**12.9 ms vs 124.3 ms** at Stage 2; sub-millisecond per vector).
+* **Transparent Trade-offs:** Dedicating a peer budget ($R_{intra} = 6$ of 24) trades a small portion of original-base recall (**0.967 → 0.941**) for massive new-cohort navigability, raising overall mixed recall (**0.927 → 0.970**).
+
 ### Before and after insertion
 
 | Stage | New-vector adjacency | Existing vectors |
