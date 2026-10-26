@@ -49,7 +49,7 @@
       <rect x="0" y="20" width="230" height="18" rx="4" fill="#94a3b8" />
       <text x="236" y="34" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#64748b">88.7%</text>
       <rect x="0" y="42" width="260" height="18" rx="4" fill="#2563eb" />
-      <text x="266" y="56" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" font-weight="700" fill="#2563eb">100.0%  (Tam isabet)</text>
+      <text x="266" y="56" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" font-weight="700" fill="#2563eb">100.0%  (Full Recall)</text>
     </g>
 
     <!-- Cohort 3: Mixed Corpus -->
@@ -75,20 +75,20 @@
   <g transform="translate(576, 80)">
     <rect width="508" height="172" rx="10" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
     <text x="20" y="28" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15" font-weight="700" fill="#1e293b">Inserted Orphan Nodes (In-degree = 0)</text>
-    <text x="20" y="45" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" fill="#64748b">Giriş kenarı bulunmayan erişilemez düğümler · Daha azı daha iyi</text>
+    <text x="20" y="45" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" fill="#64748b">Nodes with zero entry edges (unreachable) · Lower is better</text>
 
     <!-- Naive Orphans Bar -->
     <g transform="translate(20, 62)">
       <text x="0" y="14" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#475569">Naive Snapshot Insertion:</text>
       <rect x="0" y="22" width="310" height="22" rx="4" fill="#f87171" />
-      <text x="318" y="38" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#b91c1c">138 düğüm (%13.5)</text>
+      <text x="318" y="38" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#b91c1c">138 nodes (13.5% unreachable)</text>
     </g>
 
     <!-- ChunkSplice Orphans Bar -->
     <g transform="translate(20, 114)">
-      <text x="0" y="14" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#475569">ChunkSplice (RNG Budanmış Akran Kenarları):</text>
+      <text x="0" y="14" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#475569">ChunkSplice (RNG-Pruned Peer Edges):</text>
       <rect x="0" y="22" width="6" height="22" rx="3" fill="#10b981" />
-      <text x="14" y="38" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#047857">2 düğüm (%99.8 erişilebilir — %98.5 düşüş!)</text>
+      <text x="14" y="38" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#047857">2 nodes (99.8% reachable — 98.5% drop!)</text>
     </g>
   </g>
 
@@ -96,20 +96,20 @@
   <g transform="translate(576, 272)">
     <rect width="508" height="172" rx="10" fill="#f8fafc" stroke="#e2e8f0" stroke-width="1" />
     <text x="20" y="28" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15" font-weight="700" fill="#1e293b">Update Latency: ChunkSplice vs LocalRNG</text>
-    <text x="20" y="45" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" fill="#64748b">Aşama 2 güncelleme süresi (256 vektör ekleme) · Daha azı daha iyi</text>
+    <text x="20" y="45" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" fill="#64748b">Stage 2 update latency (+256 vectors) · Lower is better</text>
 
     <!-- LocalRNG Bar -->
     <g transform="translate(20, 62)">
-      <text x="0" y="14" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#475569">LocalRNG (Tüm Grafiği 2-Hop Tamir):</text>
+      <text x="0" y="14" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#475569">LocalRNG (Global 2-Hop Repair):</text>
       <rect x="0" y="22" width="310" height="22" rx="4" fill="#fbbf24" />
       <text x="318" y="38" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#b45309">124.3 ms</text>
     </g>
 
     <!-- ChunkSplice Bar -->
     <g transform="translate(20, 114)">
-      <text x="0" y="14" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#475569">ChunkSplice (Parça İçi RNG + Bütçeleme):</text>
+      <text x="0" y="14" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="12" font-weight="600" fill="#475569">ChunkSplice (Intra-Chunk RNG + Budgeting):</text>
       <rect x="0" y="22" width="32" height="22" rx="4" fill="#2563eb" />
-      <text x="40" y="38" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#1d4ed8">12.9 ms  (9.6 kat daha hızlı · &lt;0.05 ms/vektör)</text>
+      <text x="40" y="38" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="13" font-weight="700" fill="#1d4ed8">12.9 ms  (9.6x faster · &lt;0.05 ms/vector)</text>
     </g>
   </g>
 </svg>
