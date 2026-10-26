@@ -22,8 +22,10 @@ Let `N` be the active population, `D` the dimension, `B` the incoming chunk size
 | Operation | Principal computational or memory cost |
 | --- | --- |
 | Exact graph construction | Quadratic distance work, `O(N²D)`; distance blocks use `O(distance_batch × N)` scratch instead of one full distance matrix. |
-| Naive insertion | New-to-old distance work of order `O(B × N_old × D)`, reverse-edge processing, and graph copying. The implementation also materializes an `N_old × B` Boolean proposal mask. |
-| ChunkSplice addition | Intra-chunk distance work of order `O(B²D)`, plus candidate merge and selection; this is additional work on top of Naive insertion. |
+| Naive insertion (`exact`) | New-to-old distance work of order `O(B × N_old × D)`, a dense reverse pass over all `N_old` rows, and graph copying. The implementation also materializes an `N_old × B` Boolean proposal mask. |
+| Naive insertion (`beam`) | Fixed-budget beam candidate search on the predecessor graph, then the same dense reverse pass over all `N_old` rows. Candidate work is bounded in `N_old`; the reverse pass is not. |
+| Naive insertion (`bounded`) | The same beam candidate search, but reverse proposals merge only into the old rows named by the new links (at most `B × R` rows); untouched old rows keep their exact previous adjacency. Update work is independent of `N_old` for fixed chunk, degree and beam budgets. |
+| ChunkSplice addition | Intra-chunk distance work of order `O(B²D)`, plus candidate merge and selection; this is additional work on top of Naive insertion. With `bounded` insertion the inherited Naive path is also size-independent, so the whole ChunkSplice update is. |
 | LocalRNG refinement | Local pairwise geometry of order `O(L²D)`, plus exchange and candidate pruning. Candidate-pair pruning scratch scales with row-block size and the square of candidate count. Graph snapshots are still cloned globally. |
 | Search | Candidate-based distance evaluation with an `O(query_batch × N)` expanded-node bitmap, bounded beam capacity, expansion width, and rounds. |
 

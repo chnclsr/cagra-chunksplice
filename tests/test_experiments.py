@@ -56,6 +56,35 @@ class ExperimentTests(unittest.TestCase):
                         {"Rebuild-kNN", "Rebuild-RNG", "Naive", "ChunkSplice"},
                         ["--chunks", "3", "--stream-rebuild", "--query-distribution", "ood"])
 
+    def test_scaling_against_full_rebuild(self):
+        methods = {"ChunkSplice", "Naive", "Rebuild-kNN", "Rebuild-RNG",
+                   "cuVS-CAGRA-extend", "cuVS-CAGRA-rebuild"}
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "scaling.json"
+            self.run_cli([*SMALL, "--mode", "scaling", "--scaling-bases", "32", "64",
+                          "--scaling-rebuild-rng", "--scaling-cagra",
+                          "--external-backend", "simulated", "--output", str(output)], directory)
+            report = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(report["experiment"], "update_scaling")
+            self.assertEqual([p["n"] for p in report["points"]], [32, 64])
+            for point in report["points"]:
+                self.assertEqual(set(point["methods"]), methods)
+                for name, row in point["methods"].items():
+                    self.assertEqual(len(row["update_samples_ms"]), 1)
+                    self.assertTrue(0 <= row["recall10"] <= 1)
+                    self.assertEqual(row["incremental"], name in {"ChunkSplice", "Naive", "cuVS-CAGRA-extend"})
+            self.assertTrue(report["points"][0]["methods"]["cuVS-CAGRA-rebuild"]["metadata"]["simulated"])
+            self.assertEqual(set(report["scaling_exponent"]), methods)
+            self.assertEqual(set(report["speedup_vs_full_rebuild"]),
+                             {"Rebuild-kNN", "Rebuild-RNG", "cuVS-CAGRA-rebuild"})
+
+    def test_scaling_options_require_scaling_mode(self):
+        result = subprocess.run(
+            [sys.executable, "-m", "cagra_chunksplice", "--scaling-cagra"],
+            env=dict(os.environ, PYTHONPATH=str(ROOT / "src")),
+            capture_output=True, text=True, timeout=120)
+        self.assertEqual(result.returncode, 2)
+
     def check_mode(self, mode, experiment, rows_key, methods, extra=()):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / "results" / "nested" / (mode + ".json")

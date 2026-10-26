@@ -70,6 +70,39 @@ Total Out-Degree Budget: R (e.g., R = 24)
 | **LocalRNG (Two-hop repair)** | Multi-hop neighbor exchange across entire active graph | Extremely Slow (up to 40x higher latency) | High | High | Excessive GPU global memory random accesses |
 | **ChunkSplice (Ours)** | Degree budget partitioning ($R_{bridge} + R_{intra}$) + cohort-local RNG | Recorded sweep: $<0.5$ ms/vector; higher update cost than Naive | 0.734-0.934 in the sweep; 0.970 at stream end | 0.992-0.998 shared-tail sweep recall; 0.999 at stream end | Stream-end inserted reachability 0.998046875; residual unreachable nodes remain |
 
+### Four-way summary: ChunkSplice vs Full Rebuild vs cuVS-CAGRA extend vs MIRAGE
+
+Recorded synthetic native run (`results/external_validation.json`; base 2048,
+4 updates of 256, dim 32, n = 3072 at the end). Rebuild numbers come from
+`cagra_mirage_results.json` (PyTorch Rebuild-kNN, stage 4). Nothing was rerun.
+
+| Metric | Full Rebuild | cuVS-CAGRA `extend` | MIRAGE | ChunkSplice |
+| :--- | :--- | :--- | :--- | :--- |
+| Implementation | PyTorch exact kNN | Native CUDA | Native CPU (C++/FAISS) | PyTorch mechanism model |
+| Final mixed Recall@10 | 0.961 (stage 4) | **0.996** | 0.971 | 0.975 |
+| Recall@10, stages 1-4 | 0.989 / 0.986 / 0.939 / 0.961 | 1.000 / 0.999 / 0.999 / 0.996 | 0.963 / 0.965 / 0.971 / 0.971 | 0.991 / 0.993 / 0.984 / 0.975 |
+| Update latency, n = 3072 | 6.7 ms (stage 4) | **6.50 ms** | 6.89 ms | 10.63 ms |
+| Theoretical update work | O((n+b)^2 d) | library-internal | library-internal | O(n b d) `exact`; size-independent by construction with `bounded` |
+| Practical scaling | Fastest up to n = 6144 | Not measured vs n | Not measured vs n | Not measured vs n (`--mode scaling` ready, no recorded run) |
+| Memory | Not recorded per method | Not recorded per method | Not recorded per method | Not recorded per method |
+| Bounded O(1) streaming guarantee | No | Not documented | Not documented | Implemented (`bounded`), untested empirically |
+
+Reading the table:
+
+- **Memory**: the JSON files record only whole-run `peak_cuda_allocated_mb`
+  (20.5 MB external, 30.3 MB benchmark, 20.0 MB stream, 81.9 MB sweep). These
+  cover PyTorch allocations only, not CPU RSS or native-library memory, so no
+  per-method memory comparison is supported.
+- **Bounded O(1)**: a design property of `--insertion-mode bounded` (beam
+  candidates plus reverse merge over at most b * R linked rows), covered by
+  regression tests. No latency-vs-n curve exists, and each timed update still
+  includes an O(n * degree) graph copy (`update_memcpy`).
+- **Winner by metric**: cuVS-CAGRA `extend` for recall and latency; Full
+  Rebuild for latency at n <= 6144; ChunkSplice for recall over native MIRAGE
+  and for new-chunk findability against Naive (newest-chunk R@10 0.999 vs
+  0.883); MIRAGE for CPU update latency and raw QPS.
+- QPS across PyTorch and native kernels is not a topology comparison.
+
 ### Key trade-offs
 
 - **GPU graph insertion (cuVS-CAGRA, Naive, ChunkSplice)**: cuVS provides native CUDA graph extension. Naive and ChunkSplice are PyTorch mechanism models; ChunkSplice adds batched, cohort-local RNG peer pruning. CPU debugging measures the models on CPU.
@@ -100,9 +133,9 @@ validation, not a native performance comparison.
 
 | External baseline | Native execution required | Recorded status in `results/external_validation.json` | Primary-table eligibility |
 | --- | --- | --- | --- |
-| cuVS-CAGRA | Actual CUDA `cagra.build/extend/search` binaries. | Simulated: CUDA PyTorch chunk-hole model (`torch-cagra-chunk-hole`); CuPy unavailable. | Blocked pending native dataset sweeps. |
-| FAISS-HNSW | Compiled CPU FAISS `IndexHNSWFlat.add/search`. | Simulated: exact CPU reference (`torch-exact`); FAISS unavailable. | Blocked pending native dataset sweeps. |
-| MIRAGE | Compiled upstream CPU `IndexMirage.add/search` through the C ABI bridge or custom bindings. | Simulated: exact CPU reference (`torch-exact-cpu`); FAISS unavailable. | Blocked pending native dataset sweeps. |
+| cuVS-CAGRA | Actual CUDA `cagra.build/extend/search` binaries. | Native: CUDA `cuvs-cagra-cuda` (cuVS 26.10.00), `simulated: false`, recorded 2026-10-22 on an RTX 4070 SUPER. | Native gate passed on synthetic data; primary-table promotion still requires SIFT1M/GloVe sweeps. |
+| FAISS-HNSW | Compiled CPU FAISS `IndexHNSWFlat.add/search`. | Native: CPU `faiss-hnsw-cpu` (FAISS 1.15.1, 14 OpenMP threads), `simulated: false`, recorded 2026-10-22. | Native gate passed on synthetic data; primary-table promotion still requires SIFT1M/GloVe sweeps. |
+| MIRAGE | Compiled upstream CPU `IndexMirage.add/search` through the C ABI bridge or custom bindings. | Native: CPU `faiss-mirage-cpu` (upstream `6749e9c`, S=32 R=4 iter=15) via the C ABI bridge, `simulated: false`, recorded 2026-10-22. | Native gate passed on synthetic data; primary-table promotion still requires SIFT1M/GloVe sweeps. |
 
 | Promotion requirement | Evidence required before publishing external numbers in the primary tables |
 | --- | --- |
@@ -117,9 +150,15 @@ environment with an NVIDIA GPU and compatible CUDA dependencies:
 ```bash
 bash scripts/build_external.sh --probe
 bash scripts/build_external.sh --cuda-major 12
-bash scripts/run_native_validation.sh --dataset sift1m --download-datasets --external-sweep --base 800000 --chunks 4 --chunk-size 50000 --queries 1000 --repeats 3 --output results/native_sift1m.json
-bash scripts/run_native_validation.sh --dataset glove-100 --download-datasets --external-sweep --base 983514 --chunks 4 --chunk-size 50000 --queries 1000 --repeats 3 --output results/native_glove100.json
+bash scripts/run_native_sift1m.sh
+bash scripts/run_native_glove100.sh
 ```
+
+Each academic script runs the full-corpus native sweep with Pareto
+frontiers (JSON plus a sibling `.pareto.svg`), then validates native
+provenance. The equivalent explicit commands are
+`bash scripts/run_native_validation.sh --dataset sift1m --download-datasets --external-sweep --base 800000 --chunks 4 --chunk-size 50000 --queries 1000 --repeats 3 --output results/native_sift1m.json`
+and the same with `--dataset glove-100 --base 983514 --output results/native_glove100.json`.
 
 Select the CUDA major matching the environment, and pin upstream revisions for
 publication runs. The default `--faiss-opt-level generic` build omits SIMD
@@ -129,7 +168,36 @@ memory; they are commands, not recorded results or runtime estimates. See
 [native setup, sweep controls and gate limitations](docs/external_baselines.md#native-setup-and-validation)
 before running.
 
-### Controlled chunk-size sweep (2048-dim, degree 24)
+### Where ChunkSplice wins, and where it does not
+
+[Streaming analysis](docs/streaming_analysis.md) compares every update
+strategy using only recorded artifacts:
+
+- **Against graph-degrading snapshot insertion (Naive)**: at the end of the
+  recorded stream, newest-chunk Recall@10 is 0.999 against 0.883, inserted
+  orphans fall from 138 to 2, and the summed update time is 22.6 ms against
+  23.8 ms. Original-base recall is lower (0.941 against 0.967).
+- **Against graph repair (LocalRNG)**: comparable recall for the first two
+  updates at about one tenth of the update cost (4.6 against 44.1 ms and 12.9
+  against 124.3 ms); LocalRNG keeps about 0.05 higher recall afterwards.
+- **Against native MIRAGE**: higher mixed recall at all four stages of the
+  synthetic native run (0.975 against 0.971 at the end), with slower updates.
+- **Not supported by recorded data**: faster updates than full rebuild at
+  the recorded sizes (rebuild is faster up to n = 6144; the crossover is
+  unmeasured), or an advantage over native cuVS-CAGRA `extend`, which was
+  faster and more accurate. Size-independent latency is implemented
+  (`--insertion-mode bounded`: mandatory beam candidates plus reverse merge
+  over at most b * degree linked rows) but has no recorded latency-vs-n
+  curve yet.
+
+`--mode scaling` ([`scripts/run_scaling.sh`](scripts/run_scaling.sh)) measures
+one update against bases up to 524288 for ChunkSplice, Naive, full rebuilds
+and native cuVS-CAGRA `extend`/`build`, and reports fitted exponents and the
+first measured crossover against full rebuild. It honors `--insertion-mode`;
+pass `bounded` for the size-independent path (expected exponent about 0)
+alongside the default exact path (expected exponent about 1).
+
+### Controlled chunk-size sweep (base 2048, dim 32, degree 24)
 
 | Chunk size | Updates | Method | Mixed Recall@10 | Inserted R@10 | Shared-tail R@10 | Update trajectory (ms) | Mixed QPS |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -150,6 +218,19 @@ before running.
 | **Update 1** | **ChunkSplice** | **0.992** | **1.000** | **1.000** | **4870.2 QPS** |
 | **Update 4** | Naive | 0.927 | 0.887 | 0.883 | 4505.8 QPS |
 | **Update 4** | **ChunkSplice** | **0.970** | **1.000** | **0.999** | **4919.8 QPS** |
+
+### Benchmark snapshot (`results/cagra_mirage_results.json`)
+
+PyTorch mechanism-simulation benchmark (base 2048, 4 x 256, dim 32,
+RTX 4070 SUPER, 2026-10-19). Full per-stage tables are in
+[docs/results.md](docs/results.md).
+
+| Stage (n) | Method | Mixed R@10 | Mixed QPS |
+| :--- | :--- | :--- | :--- |
+| 1 (2304) | ChunkSplice | 0.991 | 5272.1 |
+| 1 (2304) | Naive | 0.964 | 4984.9 |
+| 4 (3072) | Naive | 0.929 | 2249.0 |
+| 4 (3072) | ChunkSplice | 0.926 | 2237.0 |
 
 ## Install and run
 
@@ -191,7 +272,7 @@ a small compatibility wrapper. Install the package for library imports.
 | Component | Purpose |
 | --- | --- |
 | Global rebuilds | Unpruned Rebuild-kNN and RNG-pruned Rebuild-RNG with reverse proposals; blocked exact candidate generation. |
-| Naive insertion | Exact or approximate beam selection from the preceding snapshot, with capped reverse edges. |
+| Naive insertion | Exact, beam, or bounded selection from the preceding snapshot, with capped reverse edges; bounded restricts reverse merges to linked old rows only. |
 | ChunkSplice | Peer slots, cohort-local RNG pruning and reserved old bridges. |
 | LocalRNG | Bounded one/two-hop repair, neighbor exchange and optional backfill. |
 | Beam search | Shared starts, beam capacity, expansion width and step budget. |
@@ -226,7 +307,11 @@ a small compatibility wrapper. Install the package for library imports.
 │   ├── assets/architecture.svg
 │   ├── methodology.md
 │   ├── results.md
+│   ├── streaming_analysis.md
+│   ├── external_baselines.md
 │   └── development.md
+├── native/mirage_bridge/ # C ABI bridge and patches for upstream MIRAGE
+├── scripts/              # Native setup, validation, scaling and patch export
 ├── cagra_mirage_prototype.py  # Historical CLI compatibility wrapper
 ├── pyproject.toml        # Package metadata, dependency and CLI entry
 ├── LICENSE
@@ -264,8 +349,11 @@ python experiments/stream.py --chunks 50 --chunk-size 64 --stream-eval-every 10 
 | `stream` | Naive, ChunkSplice; optional rebuilds | Retain update timings and evaluate checkpoints. |
 | `stress` | Rebuild-kNN, Rebuild-RNG, Naive, ChunkSplice | Evaluate long horizons; 100 epochs by default. |
 | `external` | CPU FAISS-HNSW, MIRAGE; GPU cuVS-CAGRA, Naive, ChunkSplice | Compare architectures with native/fallback labels. |
+| `scaling` | ChunkSplice, Naive, Rebuild-kNN; optional Rebuild-RNG, cuVS-CAGRA extend/rebuild | One-chunk update latency and recall versus base size. |
 
-Use `--insertion-mode beam` to study accumulated candidate errors and
+Use `--insertion-mode beam` to study accumulated candidate errors,
+`--insertion-mode bounded` for the size-independent update path (beam
+candidates plus reverse merge over linked rows only), and
 `--workload high-lid --dim 128` for a high-dimensional Gaussian control.
 `--query-distribution ood` shifts queries away from the indexed distribution;
 `angular` normalizes both queries and data for cosine-equivalent rankings.
@@ -286,12 +374,38 @@ Native MIRAGE requires the compiled upstream C ABI bridge or custom Python
 bindings; stock `faiss-cpu` does not include it. Reports preserve the actual
 device, CPU thread counts, backend and
 fallback reason. See [external baseline details](docs/external_baselines.md)
-for reproducible commands and run status. The [completed CUDA benchmark](results/external_validation.json)
-records `status: "ok"` and `benchmark_completed: true` on an RTX 4070 SUPER.
-HNSW and MIRAGE used exact CPU fallbacks; cuVS-CAGRA used the CUDA PyTorch
-chunk-hole simulator. Thus `native_external_comparison_complete: false`:
-the measured results describe these implementations, not native external builds.
-Earlier `_ctypes` failure diagnostics are separate `*.error.json` files.
+for reproducible commands and run status. The [completed native validation](results/external_validation.json)
+records `status: "ok"`, `benchmark_completed: true`,
+`native_external_comparison_complete: true` and a passed promotion gate on an
+RTX 4070 SUPER (2026-10-22; base 2048, four updates of 256 synthetic vectors,
+dim 32, 256 queries, 3 replays). FAISS-HNSW ran native CPU HNSW (1.15.1),
+cuVS-CAGRA ran native CUDA CAGRA (26.10.00) and MIRAGE ran the native CPU C
+ABI bridge (`6749e9c`, S=32 R=4 iter=15); all three record
+`simulated: false`. Naive and ChunkSplice remain PyTorch mechanism models.
+The report is synthetic (`dataset.synthetic: true`), so it passes the
+automated native gate without satisfying the SIFT1M/GloVe requirement.
+The earlier `results/external.error.json` diagnostic records `RuntimeError:
+native MIRAGE did not append the requested vectors` (a native append runtime
+failure, not a `_ctypes`/DLL import failure); failure diagnostics remain
+separate `*.error.json` files. The append failure was a double insert in
+upstream `IndexMirage::add` (`faiss/IndexMIRAGE.cpp`); the validation run used
+a hand-patched WSL build and confirmed every `ntotal` (2304, 2560, 2816, 3072).
+The fix is now a patch series in
+[`native/mirage_bridge/patches`](native/mirage_bridge/patches/README.md) that
+`scripts/setup_external.py` applies to the pinned revision `6749e9c`, building
+`libmirage_bridge.so` and recording each patch digest in the bridge metadata
+and build manifest.
+
+Final-stage measurements (n=3072; update is median total replay update time
+divided by update count; recall and QPS use the final stage):
+
+| Method | Backend | Update (ms) | Mixed Recall@10 | Mixed QPS |
+| :--- | :--- | :--- | :--- | :--- |
+| Naive (PyTorch model) | `torch-naive` | 6.500646499262075 | 0.9183593988418579 | 5103.278394050177 |
+| ChunkSplice (PyTorch model) | `torch-chunksplice` | 10.626298249917454 | 0.975390613079071 | 5013.386820077181 |
+| FAISS-HNSW (native CPU) | `faiss-hnsw-cpu` | 13.999516750118346 | 0.9957031607627869 | 254931.07401390868 |
+| cuVS-CAGRA (native CUDA) | `cuvs-cagra-cuda` | 6.495410249044653 | 0.9959635337193807 | 82412.25832658686 |
+| MIRAGE (native CPU) | `faiss-mirage-cpu` | 6.888773000355286 | 0.970703125 | 418112.09162927506 |
 
 Output defaults to `results/cagra_mirage_results.json` in the current working
 directory (`results/external.json` in external mode). Missing parents are created. Use a separate `--output` for new runs

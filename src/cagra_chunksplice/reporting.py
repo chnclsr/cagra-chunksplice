@@ -44,7 +44,7 @@ def experiment_report(a, device, experiment, methods):
             "Rebuild-RNG": "Global exact kNN pool; greedy directed RNG; reverse proposals; RNG re-pruning; no backfill.",
             "incremental_initialization": "Shared unpruned exact kNN base graph; update timings exclude initial build.",
             "insertion_candidates": getattr(a, "insertion_mode", "exact"),
-            "insertion_entries": "Fixed seeded original-base anchors; no exact fallback in beam mode.",
+            "insertion_entries": "Fixed seeded original-base anchors; no exact fallback in beam/bounded modes; bounded additionally restricts reverse proposals to linked old rows.",
         },
         "diagnostic_definitions": {
             "scc": "Exact iterative Kosaraju; largest fraction over all active vertices.",

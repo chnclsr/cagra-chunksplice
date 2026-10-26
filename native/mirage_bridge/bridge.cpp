@@ -1,4 +1,4 @@
-// C ABI for the unmodified upstream CPU IndexMirage.
+// C ABI for the upstream CPU IndexMirage plus the patches in patches/series.
 #if __has_include(<faiss/IndexMIRAGE.h>)
 #include <faiss/IndexMIRAGE.h>
 #else
@@ -8,7 +8,12 @@
 #include <cstdint>
 #include <exception>
 #include <memory>
+#include <stdexcept>
 #include <string>
+
+#ifndef MIRAGE_PATCHES
+#define MIRAGE_PATCHES ""
+#endif
 
 namespace {
 thread_local std::string last_error;
@@ -22,6 +27,7 @@ template<class F> int guarded(F operation) noexcept {
 extern "C" {
 const char* cs_mirage_error() { return last_error.c_str(); }
 const char* cs_mirage_version() { return MIRAGE_REVISION; }
+const char* cs_mirage_patches() { return MIRAGE_PATCHES; }
 int cs_mirage_threads() { return omp_get_max_threads(); }
 void* cs_mirage_create(int dimension, int s, int r, int iterations) noexcept {
     void* result = nullptr;
@@ -35,7 +41,18 @@ void* cs_mirage_create(int dimension, int s, int r, int iterations) noexcept {
     return result;
 }
 int cs_mirage_add(void* ptr, std::int64_t n, const float* data) noexcept {
-    return guarded([&] { static_cast<faiss::IndexMirage*>(ptr)->add(n, data); });
+    return guarded([&] {
+        auto* index = static_cast<faiss::IndexMirage*>(ptr);
+        const std::int64_t before = index->ntotal;
+        index->add(n, data);
+        // Unpatched upstream double-inserts incremental batches, so ntotal != before + n.
+        if (index->ntotal != before + n) {
+            throw std::runtime_error(
+                "IndexMirage::add appended " + std::to_string(index->ntotal - before) +
+                " rows for " + std::to_string(n) + " vectors; apply "
+                "native/mirage_bridge/patches (double-insert fix) and rebuild");
+        }
+    });
 }
 int cs_mirage_search(void* ptr, std::int64_t n, const float* q, std::int64_t k,
                      float* distances, std::int64_t* ids) noexcept {

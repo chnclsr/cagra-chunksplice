@@ -88,6 +88,7 @@ class CPUMirage(CPUIndex):
         return {**super().metadata(), "version": self.version,
                 "binding": "upstream-c-abi" if hasattr(self.index, "library_path") else "custom-faiss",
                 "library_path": getattr(self.index, "library_path", None),
+                "patches": getattr(self.index, "patches", None),
                 "native_algorithm": {
                     "hierarchy": "multi-layer",
                     "base_construction": "NN-Descent with RNG pruning",

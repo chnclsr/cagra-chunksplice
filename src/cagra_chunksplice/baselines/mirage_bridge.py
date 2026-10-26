@@ -31,6 +31,11 @@ class MirageBridge:
             function.argtypes, function.restype = args, result
         self.version = self.lib.cs_mirage_version().decode()
         self.threads = self.lib.cs_mirage_threads()
+        # Bridges built before the patch series do not export cs_mirage_patches.
+        self.patches = None
+        if hasattr(self.lib, "cs_mirage_patches"):
+            self.lib.cs_mirage_patches.argtypes, self.lib.cs_mirage_patches.restype = [], ctypes.c_char_p
+            self.patches = [entry for entry in self.lib.cs_mirage_patches().decode().split(",") if entry]
         self.handle = self.lib.cs_mirage_create(dimension, s, r, iterations)
         if not self.handle:
             raise RuntimeError(self.lib.cs_mirage_error().decode())

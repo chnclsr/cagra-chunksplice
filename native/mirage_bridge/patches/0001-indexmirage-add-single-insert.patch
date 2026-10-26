@@ -1,0 +1,13 @@
+diff --git a/faiss/IndexMIRAGE.cpp b/faiss/IndexMIRAGE.cpp
+index f3d0db1..acba908 100644
+--- a/faiss/IndexMIRAGE.cpp
++++ b/faiss/IndexMIRAGE.cpp
+@@ -130,7 +130,7 @@ void IndexMirage::add(idx_t n, const float* x) {
+ 
+     if (n0 != 0) {
+         printf("Incremental Inserts Detected\n");
+-        hierarchy.storage->add(n, x);
++        // hierarchy.storage->add(n, x); // removed: hierarchy.storage == storage, already added above
+         hierarchy.ntotal = ntotal;
+         add_inserts(hierarchy, n0, n, x, verbose, hierarchy.hnsw.levels.size() == hierarchy.ntotal);
+ 

@@ -1,0 +1,3 @@
+# Applied in order to the upstream MIRAGE checkout by scripts/setup_external.py.
+# Format: <patch file> <upstream revision the patch was exported against>
+0001-indexmirage-add-single-insert.patch 6749e9c

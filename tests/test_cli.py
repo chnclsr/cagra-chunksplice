@@ -23,6 +23,10 @@ class ArgumentTests(unittest.TestCase):
         self.assertEqual(args.device, "cuda")
         self.assertEqual(args.output, Path("results/cagra_mirage_results.json"))
 
+    def test_bounded_insertion_mode_is_accepted(self):
+        args = arguments(["--insertion-mode", "bounded"])
+        self.assertEqual(args.insertion_mode, "bounded")
+
     def test_modes_and_local_rng_options(self):
         for mode in ("benchmark", "sweep", "stream", "stress"):
             with self.subTest(mode=mode):
@@ -38,6 +42,8 @@ class ArgumentTests(unittest.TestCase):
             ["--ood-shift", "inf"], ["--age-queries", "0"],
             ["--insertion-mode", "beam", "--insertion-ef", "10"],
             ["--insertion-mode", "beam", "--insertion-search-width", "100"],
+            ["--insertion-mode", "bounded", "--insertion-ef", "10"],
+            ["--insertion-mode", "bounded", "--insertion-search-width", "100"],
  ["--degree", "9"], ["--ef", "9"],
             ["--alpha", "nan"], ["--splice-alpha", "inf"],
             ["--route", "1"], ["--local-cap", "256"],

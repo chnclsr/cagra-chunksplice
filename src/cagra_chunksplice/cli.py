@@ -54,8 +54,11 @@ def arguments(argv=None):
                    help="Global Rebuild-RNG exact candidate pool per row, >= degree.")
     p.add_argument("--rebuild-alpha", type=float, default=1.0,
                    help="Rebuild-RNG occlusion slack; no backfill.")
-    p.add_argument("--insertion-mode", choices=("exact", "beam"), default="exact",
-                   help="New-to-old candidate source; beam has no exact fallback.")
+    p.add_argument("--insertion-mode", choices=("exact", "beam", "bounded"), default="exact",
+                   help="New-to-old candidate source and reverse scope; beam modes have "
+                        "no exact fallback, and bounded additionally restricts reverse "
+                        "proposals to old rows named by the new links (update work "
+                        "independent of n for fixed chunk, degree and beam budgets).")
     p.add_argument("--insertion-ef", type=int, default=48)
     p.add_argument("--insertion-search-width", type=int, default=4)
     p.add_argument("--insertion-steps", type=int, default=8)
@@ -73,8 +76,14 @@ def arguments(argv=None):
                    help="Common random starts over all active nodes; old is a stable-anchor control.")
     p.add_argument("--workload", choices=("drift", "iid", "high-lid"), default="drift",
                    help="drift: temporal dense microclusters; iid: Gaussian control; high-lid: full-dimensional isotropic Gaussian (use --dim 128 or higher).")
-    p.add_argument("--mode", choices=("benchmark", "sweep", "stream", "stress", "external"), default="benchmark",
-                   help="benchmark: standard run; sweep: chunk-size sweep; stream: checkpointed streaming; stress: streaming with global baselines (default 100 epochs); external: native/simulated index comparison.")
+    p.add_argument("--mode", choices=("benchmark", "sweep", "stream", "stress", "external", "scaling"), default="benchmark",
+                   help="benchmark: standard run; sweep: chunk-size sweep; stream: checkpointed streaming; stress: streaming with global baselines (default 100 epochs); external: native/simulated index comparison; scaling: one-chunk update latency versus base size, incremental against full rebuild.")
+    p.add_argument("--scaling-bases", type=int, nargs="+", default=[2048, 8192, 32768, 131072],
+                   help="Base sizes for scaling mode; one --chunk-size update per base.")
+    p.add_argument("--scaling-rebuild-rng", action="store_true",
+                   help="Also time Rebuild-RNG in scaling mode (CPU-side reverse merge; slow at large bases).")
+    p.add_argument("--scaling-cagra", action="store_true",
+                   help="Also time cuVS-CAGRA extend and full rebuild in scaling mode (honors --external-backend).")
     p.add_argument("--external-backend", choices=("auto", "native", "simulated"), default="auto",
                    help="External indexes: auto selects native or labeled fallback; native requires libraries/hardware; simulated is portable.")
     p.add_argument("--dataset", choices=("synthetic", "sift1m", "glove-100"), default="synthetic")
@@ -116,6 +125,10 @@ def arguments(argv=None):
     a = p.parse_args(argv)
     if a.mode != "external" and (a.dataset != "synthetic" or a.external_sweep or a.require_native_validation):
         p.error("datasets, external-sweep and require-native-validation require external mode")
+    if a.mode != "scaling" and (a.scaling_rebuild_rng or a.scaling_cagra):
+        p.error("scaling-rebuild-rng and scaling-cagra require scaling mode")
+    if a.mode == "scaling" and any(n <= a.degree or n < a.ef for n in a.scaling_bases):
+        p.error("every scaling base must exceed degree and be >= ef")
     if a.dataset != "synthetic" and a.query_distribution != "in-distribution":
         p.error("academic datasets use their registered metric and held-out queries")
     if a.external_sweep and min(a.graph_ef_values) < a.search_width:
@@ -155,9 +168,9 @@ def arguments(argv=None):
             p.error("--" + key.replace("_", "-") + " must be positive")
     if a.rebuild_pool < a.degree:
         p.error("rebuild-pool must be >= degree")
-    if a.insertion_mode == "beam" and (a.insertion_ef < a.degree or
+    if a.insertion_mode in ("beam", "bounded") and (a.insertion_ef < a.degree or
                                        a.insertion_search_width > min(a.insertion_ef, a.base)):
-        p.error("beam insertion requires insertion-ef >= degree and insertion-search-width <= min(insertion-ef, base)")
+        p.error(a.insertion_mode + " insertion requires insertion-ef >= degree and insertion-search-width <= min(insertion-ef, base)")
     if not a.rebuild_alpha >= 1 or a.rebuild_alpha == float("inf"):
         p.error("rebuild-alpha must be finite and >= 1")
     if not 0 <= a.ood_shift < float("inf"):
@@ -216,6 +229,9 @@ def main(argv=None):
                     report = benchmark_external_sweep(a, device)
                 else:
                     report = benchmark_external(a, device)
+            elif a.mode == "scaling":
+                from cagra_chunksplice.runners.scaling import run_scaling
+                report = run_scaling(a, device)
             elif a.mode == "sweep":
                 report = run_sweep(a, device)
             elif a.mode in ("stream", "stress"):

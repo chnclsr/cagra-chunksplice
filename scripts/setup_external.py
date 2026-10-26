@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import hashlib
 import json
 import os
 import platform
@@ -19,6 +20,11 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+MIRAGE_PATCHES = ROOT / "native/mirage_bridge/patches"
+# Output name set in native/mirage_bridge/CMakeLists.txt; matches recorded reports.
+MIRAGE_LIBRARY = "libmirage_bridge.so"
+# Upstream revision the recorded validation and the patch series target.
+MIRAGE_DEFAULT_REF = "6749e9c"
 
 
 def capture(command):
@@ -58,17 +64,83 @@ def run(command, *, cwd=None, dry_run=False):
         subprocess.run(list(map(str, command)), cwd=cwd, check=True)
 
 
-def checkout(url, ref, destination, dry_run):
+def git_ok(destination, *arguments):
+    return subprocess.run(["git", "-C", str(destination), *arguments],
+                          capture_output=True, text=True).returncode == 0
+
+
+def read_series(directory=MIRAGE_PATCHES):
+    """Return [(patch path, upstream revision)] in application order."""
+    entries = []
+    for line in (directory / "series").read_text(encoding="utf-8").splitlines():
+        line = line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        parts = line.split()
+        if len(parts) != 2:
+            raise RuntimeError("Malformed patch series line: " + line)
+        entries.append((directory / parts[0], parts[1]))
+    return entries
+
+
+def patch_records(series):
+    """Name, base revision and SHA-256 of each patch; missing files are fatal."""
+    missing = [str(path) for path, _ in series if not path.is_file()]
+    if missing:
+        raise RuntimeError("Missing MIRAGE patch(es): " + ", ".join(missing) +
+                           ". Export the fix with scripts/export_mirage_patch.sh "
+                           "(see native/mirage_bridge/patches/README.md).")
+    return [{"name": path.name, "base_revision": revision,
+             "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+            for path, revision in series]
+
+
+def patch_files(path):
+    """Paths touched by a patch, from its diff headers."""
+    return {line.split()[-1][2:] for line in path.read_text(encoding="utf-8").splitlines()
+            if line.startswith("+++ ") and line.split()[-1] != "/dev/null"}
+
+
+def patched_only(destination, series):
+    """True when every local change is exactly an already-applied series patch."""
+    if not series or not all(git_ok(destination, "apply", "--reverse", "--check", str(path))
+                             for path, _ in series):
+        return False
+    changed = subprocess.check_output(["git", "-C", str(destination), "status", "--porcelain"],
+                                      text=True).splitlines()
+    allowed = set().union(*(patch_files(path) for path, _ in series))
+    return all(line[:2] == " M" and line[3:] in allowed for line in changed)
+
+
+def apply_patches(destination, series, revision, dry_run):
+    """Apply each patch once; an already-applied patch is recorded, not reapplied."""
+    statuses = []
+    for path, base in series:
+        if not dry_run and not revision.startswith(base) and not base.startswith(revision):
+            raise RuntimeError(f"{path.name} targets {base}, but the checkout is {revision}; "
+                               "re-export the patch or pass --mirage-ref " + base)
+        if not dry_run and git_ok(destination, "apply", "--reverse", "--check", str(path)):
+            statuses.append("already-applied")
+            continue
+        if not dry_run and not git_ok(destination, "apply", "--check", str(path)):
+            raise RuntimeError("Patch does not apply cleanly: " + str(path))
+        run(["git", "-C", destination, "apply", path], dry_run=dry_run)
+        statuses.append("applied")
+    return statuses
+
+
+def checkout(url, ref, destination, dry_run, series=()):
     if not destination.exists():
         run(["git", "clone", "--no-checkout", url, destination], dry_run=dry_run)
         run(["git", "-C", destination, "checkout", "--detach", ref], dry_run=dry_run)
     elif not dry_run:
         # Never reset a user's source tree or silently change its selected revision.
+        # The only tolerated local change is this repository's own patch series.
         origin = subprocess.check_output(["git", "-C", str(destination), "remote", "get-url", "origin"], text=True).strip()
         dirty = subprocess.check_output(["git", "-C", str(destination), "status", "--porcelain"], text=True).strip()
         current = subprocess.check_output(["git", "-C", str(destination), "rev-parse", "HEAD"], text=True).strip()
         wanted = subprocess.check_output(["git", "-C", str(destination), "rev-parse", ref + "^{commit}"], text=True).strip()
-        if origin != url or dirty or current != wanted:
+        if origin != url or current != wanted or (dirty and not patched_only(destination, series)):
             raise RuntimeError("Refusing to overwrite changed or mismatched checkout: " + str(destination))
     if dry_run:
         return ref
@@ -114,6 +186,8 @@ for index in (FaissHNSW(backend='native'), CPUMirage(backend='native'),
     assert ids.shape == (4, 10) and index.ntotal == 288
     assert bool(((ids >= -1) & (ids < 288)).all())
     assert index.metadata()['simulated'] is False
+    if isinstance(index, CPUMirage):
+        assert index.metadata()['patches'], 'MIRAGE bridge records no applied patches'
     print(index.metadata())
 """
     run([sys.executable, "-c", script])
@@ -128,7 +202,8 @@ def main(argv=None):
     parser.add_argument("--cuvs-version", default="25.10.*",
                         help="Pin a release compatible with Python, driver and toolkit.")
     parser.add_argument("--faiss-ref", default="v1.10.0")
-    parser.add_argument("--mirage-ref", default="main", help="Use a commit hash for reproducible builds.")
+    parser.add_argument("--mirage-ref", default=MIRAGE_DEFAULT_REF,
+                        help="Upstream MIRAGE commit; must match the patch series base.")
     parser.add_argument("--cuvs-ref", default="branch-25.10")
     parser.add_argument("--source-cuvs", action="store_true",
                         help="Build cuVS/libcuvs Python components from upstream instead of wheels.")
@@ -161,12 +236,24 @@ def main(argv=None):
         (prefix / "src").mkdir(parents=True, exist_ok=True)
     run([sys.executable, "-m", "pip", "install", "numpy", "setuptools", "wheel", "packaging"], dry_run=args.dry_run)
     faiss_source, mirage_source = prefix / "src/faiss", prefix / "src/mirage"
+    series = read_series()
+    try:
+        patches = patch_records(series)
+    except RuntimeError as exc:
+        if not args.dry_run:
+            raise
+        print("WARNING: " + str(exc), flush=True)
+        patches = [{"name": path.name, "base_revision": revision, "sha256": None}
+                   for path, revision in series]
     revisions = {
         "faiss": checkout("https://github.com/facebookresearch/faiss.git", args.faiss_ref,
                           faiss_source, args.dry_run),
         "mirage": checkout("https://github.com/dsg-uwaterloo/mirage.git", args.mirage_ref,
-                           mirage_source, args.dry_run),
+                           mirage_source, args.dry_run, series),
     }
+    for record, status in zip(patches, apply_patches(mirage_source, series, revisions["mirage"],
+                                                     args.dry_run)):
+        record["status"] = status
     faiss_build, mirage_build = prefix / "build/faiss", prefix / "build/mirage"
     configure_cpu(faiss_source, faiss_build, python_enabled=True, jobs=args.jobs,
                   dry_run=args.dry_run, opt_level=args.faiss_opt_level)
@@ -177,7 +264,9 @@ def main(argv=None):
     run(["cmake", "-S", ROOT / "native/mirage_bridge", "-B", bridge_build,
          "-DMIRAGE_SOURCE=" + str(mirage_source), "-DMIRAGE_BUILD=" + str(mirage_build),
          "-DMIRAGE_FAISS_NAME=" + faiss_library_name(args.faiss_opt_level),
-         "-DMIRAGE_REVISION=" + revisions["mirage"], "-DCMAKE_BUILD_TYPE=Release"], dry_run=args.dry_run)
+         "-DMIRAGE_REVISION=" + revisions["mirage"],
+         "-DMIRAGE_PATCHES=" + ";".join(f"{p['name']}@{p['sha256']}" for p in patches),
+         "-DCMAKE_BUILD_TYPE=Release"], dry_run=args.dry_run)
     run(["cmake", "--build", bridge_build, "--parallel", args.jobs], dry_run=args.dry_run)
     if args.source_cuvs:
         if not args.dry_run and not environment["tools"]["nvcc"]:
@@ -189,13 +278,14 @@ def main(argv=None):
         run([sys.executable, "-m", "pip", "install", "--extra-index-url", "https://pypi.nvidia.com",
              f"cuvs-cu{cuda}=={args.cuvs_version}", f"cupy-cuda{cuda}x"], dry_run=args.dry_run)
     run([sys.executable, "-m", "pip", "install", "-e", str(ROOT) + "[test,datasets]"], dry_run=args.dry_run)
-    library = bridge_build / "libchunksplice_mirage.so"
+    library = bridge_build / MIRAGE_LIBRARY
     env_file = prefix / "env.sh"
     if args.dry_run:
         print("Export CAGRA_MIRAGE_LIBRARY=" + str(library))
         return 0
     env_file.write_text("export CAGRA_MIRAGE_LIBRARY=" + shlex.quote(str(library)) + "\n", encoding="utf-8")
     manifest = {"environment": environment, "upstream_revisions": revisions,
+                "mirage_patches": patches, "mirage_library": str(library),
                 "arguments": {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()},
                 "timestamp_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 "smoke_passed": False, "native_external_comparison_complete": False}

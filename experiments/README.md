@@ -7,7 +7,20 @@ CLI and selects the matching mode:
 python experiments/benchmark.py --device cpu --base 512 --chunks 2 --chunk-size 64 --output results/benchmark_debug.json
 python experiments/sweep.py --sweep-total 4096 --sweep-chunk-sizes 64 256 1024 2048 --output results/sweep_reproduced.json
 python experiments/stream.py --chunks 4 --chunk-size 256 --output results/stream_reproduced.json
+python experiments/scaling.py --scaling-bases 2048 8192 32768 131072 --output results/scaling_pytorch.json
 ```
+
+`scaling.py` inserts one `--chunk-size` update into each base and times
+ChunkSplice and Naive against a full Rebuild-kNN (`--scaling-rebuild-rng` adds
+Rebuild-RNG; `--scaling-cagra` adds cuVS-CAGRA `extend` and full `build`,
+using `--external-backend`). It honors `--insertion-mode`: run once with the
+default `exact` mode and once with `bounded`, keep the outputs in separate
+files (for example `results/scaling_pytorch.json` and
+`results/scaling_bounded.json`), and compare the fitted `scaling_exponent`
+values (expected about 1 for exact, about 0 for bounded, about 2 for
+Rebuild-kNN). No scaling run has been recorded yet; do not quote a crossover
+until `first_measured_crossover_n` is measured. See [streaming
+analysis](../docs/streaming_analysis.md).
 
 CUDA is the default; add `--device cpu` for debugging.
 `python -m cagra_chunksplice --mode <mode> ...` and `cagra-chunksplice --mode <mode> ...`
@@ -47,6 +60,11 @@ control. Beam mode uses the existing graph search on the immutable predecessor,
 with fixed seeded original-base entries and independent `--insertion-ef`,
 `--insertion-search-width`, and `--insertion-steps` budgets. It never replaces
 missed candidates with exact neighbors. Missing candidates remain absent.
+Bounded mode uses the same beam candidate search and additionally restricts
+reverse proposals to old rows named by the new links (at most b * degree
+rows), so update work is independent of n for fixed chunk, degree and beam
+budgets; it is the mode to use for size-independent update claims and for the
+`--mode scaling` bounded curve.
 ChunkSplice still computes its within-chunk peer pool exactly; LocalRNG retains
 its bounded exact local repair. Candidate errors therefore affect later graph
 snapshots rather than being reset by a global insertion oracle.

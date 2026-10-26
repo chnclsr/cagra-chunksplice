@@ -7,8 +7,8 @@ from cagra_chunksplice.algorithms.naive import naive_extend
 from cagra_chunksplice.algorithms.pruning import rng_prune
 
 
-def chunk_splice_extend(x, old_graph, start, end, a):
-    """Exact or beam Naive insertion plus a diverse splice for new rows only.
+def chunk_splice_extend(x, old_graph, start, end, a, out=None):
+    """Naive insertion (exact, beam or bounded) plus a diverse splice for new rows only.
 
     Dense chunks are sinkholes when peers take most of the degree budget: a beam
     entering a microcluster spends its expansions on near-duplicate peers and has
@@ -19,9 +19,14 @@ def chunk_splice_extend(x, old_graph, start, end, a):
     both: peers cannot occlude bridges, and RNG spreads the few peer slots across
     directions instead of the nearest near-duplicates; backfill uses only available candidates; missing ANN bridges remain absent.
     Work is one O(b^2 d) GEMM plus one width (degree + splice_pool) prune over
-    the chunk rows; old rows are exactly the Naive result.
+    the chunk rows; old rows are exactly the Naive result. With
+    ``insertion_mode="bounded"`` the inherited Naive path uses beam candidates
+    and a targeted reverse merge over at most b * degree old rows, so the whole
+    ChunkSplice update is independent of n for fixed chunk, degree and beam
+    budgets. ``out`` is forwarded to ``naive_extend``: a ``(end, degree)``
+    caller-owned result buffer reused across updates.
     """
-    graph = naive_extend(x, old_graph, start, end, a)
+    graph = naive_extend(x, old_graph, start, end, a, out=out)
     b = end - start
     if b <= 1:
         return graph
